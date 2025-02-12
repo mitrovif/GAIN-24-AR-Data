@@ -1095,6 +1095,64 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")
+# ======================================================
+# Load and process PRO11/PRO12 variables
+# ======================================================
+# Convert to long format and classify categories
+aggregated_repeat_data <- repeat_data %>%
+  pivot_longer(
+    cols = starts_with("PRO12"),
+    names_to = "Category_Variable",
+    values_to = "Value"
+  ) %>%
+  filter(Value == 1) %>%  # Filter where Value is 1
+  mutate(
+    Example_Type = case_when(
+      g_conled == 1 ~ "Nationally led examples",
+      g_conled == 2 ~ "Institutionally led examples",
+      TRUE ~ "Unknown"
+    ),
+    Category = case_when(
+      Category_Variable == "PRO12A" ~ "Statistical framework/population group",
+      Category_Variable == "PRO12B" ~ "Recommendations on data sources",
+      Category_Variable == "PRO12C" ~ "Coordination",
+      Category_Variable == "PRO12D" ~ "Data sharing",
+      Category_Variable == "PRO12E" ~ "Analysis",
+      Category_Variable == "PRO12F" ~ "Indicator selection",
+      Category_Variable == "PRO12G" ~ "Data integration",
+      Category_Variable == "PRO12H" ~ "Dissemination",
+      Category_Variable == "PRO12I" ~ "Institutional or sectoral strategy",
+      Category_Variable == "PRO12J" ~ "Other (specify)",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(Category)) %>%
+  group_by(Example_Type, Category, X_recommendation  ) %>%  # Add _recommendation to the grouping
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = c(Example_Type, X_recommendation  ), values_from = Count, values_fill = 0)
+
+# Add Total row at the bottom
+final_data <- aggregated_repeat_data %>%
+  bind_rows(
+    summarise(aggregated_repeat_data, across(where(is.numeric), sum, na.rm = TRUE)) %>%
+      mutate(Category = "Total")
+  )
+
+# Create a multi-level header in FlexTable
+text2_flextable <- flextable(final_data) %>%
+  set_header_df(mapping = data.frame(
+    col_keys = colnames(final_data),
+    header1 = c("Category", "Institutionally led examples", "Institutionally led examples", "Institutionally led examples",
+                "Nationally led examples", "Nationally led examples", "Nationally led examples"),
+    header2 = c("Category", "IRIS", "IRRS", "IROSS", "IRIS", "IRRS", "IROSS")
+  )) %>%
+  merge_h(part = "header") %>%  # Merge horizontally for the top-level header
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  autofit() %>%
+  bg(bg = "#f4cccc", i = nrow(final_data)) %>%  # Highlight the Total row
+  set_caption("Text 2: Aggregated Breakdown by Category, Example Type, and Recommendation Type")
+
 
 # Create Word document
 word_doc <- read_docx()
@@ -1111,11 +1169,15 @@ word_doc <- word_doc %>%
   body_add_break() %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
+  body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
+  body_add_flextable(text2_flextable) %>%  # Add missing %>%
+  body_add_break() %>%
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%
   body_add_break() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
   body_add_gg(map_plot, width = 8, height = 6.4) %>%
+  body_end_section_landscape() %>%  # Apply landscape mode only for the map
   body_add_break() %>%
   body_add_flextable(figure9) %>%
   body_add_break() %>%
@@ -1123,8 +1185,7 @@ word_doc <- word_doc %>%
   body_add_flextable(institutional_flextable) %>%
   body_add_break() %>%
   body_add_par("Future Projects Breakdown by Source for 2024", style = "heading 2") %>%
-  body_add_flextable(source_summary_flextable) %>%
-  body_end_section_landscape()  # Apply landscape orientation to all sections
+  body_add_flextable(source_summary_flextable)
 
 # Save the Word document
 word_output_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report GAIN 2024_Updated.docx"
