@@ -1007,6 +1007,11 @@ institutional_flextable <- flextable(institutional_implementation_table) %>%
 # ======================================================
 # Add Future Projects 
 # ======================================================
+
+sapply(group_roster2[, fpr05_columns], class)
+group_roster2 <- group_roster2 %>%
+  mutate(across(all_of(fpr05_columns), ~ as.numeric(.)))
+
 # Step 1: Create the Source column and count the number of times each source is used
 source_summary <- group_roster2 %>%
   pivot_longer(
@@ -1014,7 +1019,7 @@ source_summary <- group_roster2 %>%
     names_to = "Source_Variable",
     values_to = "Value"
   ) %>%
-  filter(Value == 1) %>%  # Filter rows where Value is 1
+  filter(Value == 1) %>%
   mutate(
     Source = case_when(
       grepl("SURVEY", Source_Variable) ~ "Survey",
@@ -1029,9 +1034,10 @@ source_summary <- group_roster2 %>%
       TRUE ~ "Unknown"
     )
   ) %>%
-  count(Source) %>%  # Count occurrences for each Source
+  count(Source) %>%
   rename(Count = n) %>%
-  bind_rows(tibble(Source = "Total", Count = sum(.$Count)))  # Add a Total row
+  bind_rows(tibble(Source = "Total", Count = sum(.$Count)))
+
 
 # Create a FlexTable for Word
 source_summary_flextable <- flextable(source_summary) %>%
@@ -1043,7 +1049,52 @@ source_summary_flextable <- flextable(source_summary) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Future Projects Breakdown by Source for 2024")
+# ======================================================
+# Unique Country Count for Use of Recommendations (PRO09 == 1) by Leadership Type
+# ======================================================
 
+# Function to calculate unique country counts by `g_conled`
+calculate_unique_country_count <- function(group_roster, leadership_type) {
+  group_roster %>%
+    filter(PRO09 == 1, g_conled == leadership_type) %>%  # Filter for Use of Recommendations and Leadership Type
+    group_by(region, ryear) %>%
+    summarise(unique_countries = n_distinct(mcountry), .groups = "drop") %>%
+    pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0) %>%
+    mutate(Total = rowSums(across(`2021`:`2024`), na.rm = TRUE)) %>%
+    mutate(Leadership = if_else(leadership_type == 1, "Nationally Led", "Institutionally Led"))
+}
+
+# Calculate unique country counts for nationally and institutionally led examples
+nationally_led_count <- calculate_unique_country_count(group_roster, 1)
+institutionally_led_count <- calculate_unique_country_count(group_roster, 2)
+
+# Combine both tables
+combined_unique_country_count <- bind_rows(nationally_led_count, institutionally_led_count)
+
+# Add a summary row for total unique countries across all regions
+total_unique_summary <- group_roster %>%
+  filter(PRO09 == 1) %>%
+  group_by(ryear) %>%
+  summarise(unique_countries = n_distinct(mcountry), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0) %>%
+  mutate(Total = rowSums(across(`2021`:`2024`), na.rm = TRUE)) %>%
+  mutate(region = "Total Unique Countries", Leadership = "Total")
+
+# Final table with combined counts and summary
+final_unique_country_table <- bind_rows(combined_unique_country_count, total_unique_summary)
+
+# Beautify and create FlexTable for Word
+unique_country_flextable <- flextable(final_unique_country_table) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%   # Highlight the 2024 column
+  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
+  merge_v(j = ~ Leadership) %>%  # Merge Leadership column for repeated values
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  autofit() %>%
+  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
+  set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")
 
 # Create Word document
 word_doc <- read_docx()
@@ -1060,8 +1111,11 @@ word_doc <- word_doc %>%
   body_add_break() %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
+  body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
+  body_add_flextable(unique_country_flextable) %>%
+  body_add_break() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
-  body_add_gg(map_plot, width = 8, height = 6.4) %>%  # Scaled to 80%
+  body_add_gg(map_plot, width = 8, height = 6.4) %>%
   body_add_break() %>%
   body_add_flextable(figure9) %>%
   body_add_break() %>%
@@ -1069,11 +1123,14 @@ word_doc <- word_doc %>%
   body_add_flextable(institutional_flextable) %>%
   body_add_break() %>%
   body_add_par("Future Projects Breakdown by Source for 2024", style = "heading 2") %>%
-  body_add_flextable(source_summary_flextable) %>%  # Use source_summary_flextable here
+  body_add_flextable(source_summary_flextable) %>%
   body_end_section_landscape()  # Apply landscape orientation to all sections
 
 # Save the Word document
 word_output_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report GAIN 2024_Updated.docx"
+
+# Ensure the file is saved properly
 print(word_doc, target = word_output_file)
 
-message("Updated GAIN 2024 Annual Report with enhanced formatting, resized map, and Future Projects Breakdown added.")
+# Message to confirm successful save
+message("Updated GAIN 2024 Annual Report saved successfully at: ", word_output_file)
