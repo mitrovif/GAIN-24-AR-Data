@@ -1005,6 +1005,64 @@ institutional_flextable <- flextable(institutional_implementation_table) %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Institutional Implementation Breakdown")
 # ======================================================
+# Generate Breakdown by Organization table
+# ======================================================
+organization_table <- group_roster %>%
+  filter(g_conled == 2) %>%
+  group_by(morganization, ryear) %>%
+  summarise(Total_Examples = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = Total_Examples, values_fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = sum(c_across(`2021`:`2024`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(morganization) %>%
+  select(morganization, `2021`, `2022`, `2023`, `2024`, Total)
+
+# Beautify and create FlexTable for Word
+organization_flextable <- flextable(organization_table) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%  # Highlight the 2024 column
+  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  autofit() %>%
+  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
+  set_caption(caption = "Breakdown by Organization")
+# ======================================================
+# Generate Level of Implementation breakdown table
+# ======================================================
+implementation_level_table <- group_roster %>%
+  filter(g_conled == 2) %>%
+  mutate(Level_of_Implementation = case_when(
+    PRO03B == 1 ~ "Global",
+    PRO03B == 2 ~ "Regional",
+    PRO03B == 3 ~ "Country",
+    TRUE ~ "Unknown"
+  )) %>%
+  group_by(Level_of_Implementation, ryear) %>%
+  summarise(Total_Examples = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = Total_Examples, values_fill = 0) %>%
+  rowwise() %>%
+  mutate(Total = sum(c_across(`2021`:`2024`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(factor(Level_of_Implementation, levels = c("Global", "Regional", "Country", "Unknown"))) %>%
+  select(Level_of_Implementation, `2021`, `2022`, `2023`, `2024`, Total)
+
+# Beautify and create FlexTable for Word
+implementation_level_flextable <- flextable(implementation_level_table) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%  # Highlight the 2024 column
+  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  autofit() %>%
+  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
+  set_caption(caption = "Breakdown by Level of Implementation")
+
+
+# ======================================================
 # Add Future Projects 
 # ======================================================
 
@@ -1153,8 +1211,106 @@ text2_flextable <- flextable(final_data) %>%
   bg(bg = "#f4cccc", i = nrow(final_data)) %>%  # Highlight the Total row
   set_caption("Text 2: Aggregated Breakdown by Category, Example Type, and Recommendation Type")
 
+# ======================================================
+# Create Partnerships And Partnerships Names
+# ======================================================
+library(dplyr)
+library(tidyr)
+library(flextable)
+library(officer)
 
-# Create Word document
+
+# Partnerships Summary Table (PRO17)
+
+# Summarize Partnerships by Year and Example Type
+partnership_summary <- group_roster %>%
+  group_by(Example_Type = case_when(
+    g_conled == 1 ~ "Nationally led examples",
+    g_conled == 2 ~ "Institutionally led examples"
+  ),
+  Partnership_Status = case_when(
+    PRO17 == 1 ~ "Had partnerships",
+    PRO17 == 2 ~ "No partnerships",
+    PRO17 == 8 ~ "Don't know"
+  ),
+  ryear) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = Count, values_fill = 0) %>%
+  mutate(Total = rowSums(select(., starts_with("20")), na.rm = TRUE))
+
+# Remove duplicates in Example_Type and Partnership_Status columns
+partnership_summary_cleaned <- partnership_summary %>%
+  mutate(
+    Example_Type = ifelse(duplicated(Example_Type), "", Example_Type),
+    Partnership_Status = ifelse(duplicated(Partnership_Status) & Example_Type == "", "", Partnership_Status)
+  )
+
+# ======================================================
+# Create FlexTable
+# ======================================================
+partnership_flextable <- flextable(partnership_summary_cleaned) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  merge_v(j = ~ Example_Type + Partnership_Status) %>%  # Merge vertically to suppress repeated labels
+  bg(bg = "#f4cccc", j = ~ Total) %>%  # Highlight Total column
+  autofit() %>%
+  set_caption("Partnerships Summary by Year and Example Type")
+
+
+# ======================================================
+# Organization Mentions Table (PRO18)
+# ======================================================
+
+# List of organizations to check mentions
+organizations <- c("UNHCR", "IOM", "JDC", "UNFPA", "World Bank", "WB")
+
+# Count mentions of each organization by year
+organization_mentions <- data.frame()
+
+for (org in organizations) {
+  mention_count <- group_roster %>%
+    filter(str_detect(PRO18, fixed(org, ignore_case = TRUE))) %>%
+    group_by(ryear) %>%
+    summarise(Count = n(), .groups = "drop") %>%
+    complete(ryear = 2021:2024, fill = list(Count = 0)) %>%
+    summarise(
+      Organization = org,
+      `2021` = Count[ryear == 2021],
+      `2022` = Count[ryear == 2022],
+      `2023` = Count[ryear == 2023],
+      `2024` = Count[ryear == 2024],
+      Total = sum(Count, na.rm = TRUE)
+    )
+  organization_mentions <- bind_rows(organization_mentions, mention_count)
+}
+
+# Combine World Bank and WB rows
+organization_mentions <- organization_mentions %>%
+  filter(Organization %in% c("World Bank", "WB")) %>%
+  group_by(Organization = "World Bank/WB") %>%
+  summarise(across(everything(), sum, na.rm = TRUE)) %>%
+  bind_rows(organization_mentions %>% filter(!Organization %in% c("World Bank", "WB")))
+
+# ======================================================
+# Create Partnerships And Partnerships Names
+# ======================================================
+
+# Partnerships Summary FlexTable
+partnership_flextable <- flextable(partnership_summary) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ Total) %>%  # Highlight the Total column
+  autofit() %>%
+  set_caption("Partnerships Summary by Year and Example Type")
+
+# Organization Mentions FlexTable
+organization_mentions_flextable <- flextable(organization_mentions) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ Total) %>%  # Highlight the Total column
+  autofit() %>%
+  set_caption("Organization Mentions by Year")
+# Add two new tables for Organization and Level of Implementation
 word_doc <- read_docx()
 
 # Add content to Word document
@@ -1170,16 +1326,28 @@ word_doc <- word_doc %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
   body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
-  body_add_flextable(text2_flextable) %>%  # Add missing %>%
+  body_add_flextable(text2_flextable) %>%
   body_add_break() %>%
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%
   body_add_break() %>%
+  body_add_par("Breakdown by Organization", style = "heading 2") %>%   # New Table
+  body_add_flextable(organization_flextable) %>%                      # Add organization_flextable
+  body_add_break() %>%
+  body_add_par("Breakdown by Level of Implementation", style = "heading 2") %>%  # New Table
+  body_add_flextable(implementation_level_flextable) %>%                        # Add implementation_level_flextable
+  body_add_break() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
   body_add_gg(map_plot, width = 8, height = 6.4) %>%
-  body_end_section_landscape() %>%  # Apply landscape mode only for the map
+  body_end_section_landscape() %>%
   body_add_break() %>%
   body_add_flextable(figure9) %>%
+  body_add_break() %>%
+  body_add_par("Partnerships Summary", style = "heading 2") %>%
+  body_add_flextable(partnership_flextable) %>%
+  body_add_break() %>%
+  body_add_par("Organization Mentions Matrix", style = "heading 2") %>%
+  body_add_flextable(organization_mentions_flextable) %>%
   body_add_break() %>%
   body_add_par("Institutional Implementation Breakdown", style = "heading 2") %>%
   body_add_flextable(institutional_flextable) %>%
