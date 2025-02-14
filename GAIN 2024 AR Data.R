@@ -840,12 +840,13 @@ figure7 <- flextable(recuse_table) %>%
 # Step 1: Prepare the data
 aggregated_data <- group_roster %>%
   filter(g_conled == 1) %>%  # Filter for g_conled == 1
+  mutate(across(starts_with("PRO08."), as.integer)) %>%  # Convert all PRO08.* columns to integer
   pivot_longer(
     cols = starts_with("PRO08."),
     names_to = "Source_Variable",
     values_to = "Value"
-  ) %>%
-  filter(Value == 1) %>%
+  ) %>% 
+  filter(Value == 1) %>% 
   mutate(
     Source = case_when(
       grepl("PRO08.A", Source_Variable) ~ "Survey",
@@ -860,15 +861,14 @@ aggregated_data <- group_roster %>%
       PRO09 %in% c(2, 8) ~ "Not Used Recommendations and Other",
       TRUE ~ "Not Used Recommendations and Other"
     )
-  ) %>%
-  group_by(Recommendation_Status, Source, ryear) %>%
-  summarise(Count = n(), .groups = "drop") %>%
+  ) %>% 
+  group_by(Recommendation_Status, Source, ryear) %>% 
+  summarise(Count = n(), .groups = "drop") %>% 
   pivot_wider(
     names_from = ryear,
     values_from = Count,
     values_fill = 0
   )
-
 # Step 2: Add Total Column
 aggregated_data <- aggregated_data %>%
   mutate(
@@ -1101,7 +1101,15 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
 # ======================================================
 # Load and process PRO11/PRO12 variables
 # ======================================================
-# Convert to long format and classify categories
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+
+# Step 1: Rename `_recommendation` to `recommendation`
+repeat_data <- repeat_data %>%
+  rename(recommendation = `_recommendation`)
+
+# Step 2: Convert to long format, classify categories, and aggregate
 aggregated_repeat_data <- repeat_data %>%
   pivot_longer(
     cols = starts_with("PRO12"),
@@ -1129,10 +1137,14 @@ aggregated_repeat_data <- repeat_data %>%
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category)) %>%
-  group_by(Example_Type, Category, X_recommendation  ) %>%  # Add _recommendation to the grouping
+  filter(!is.na(Category)) %>%  # Remove rows with NA in Category
+  group_by(Example_Type, Category, recommendation) %>%
   summarise(Count = n(), .groups = "drop") %>%
-  pivot_wider(names_from = c(Example_Type, X_recommendation  ), values_from = Count, values_fill = 0)
+  pivot_wider(
+    names_from = c(Example_Type, recommendation),
+    values_from = Count,
+    values_fill = 0
+  )
 
 # Add Total row at the bottom
 final_data <- aggregated_repeat_data %>%
