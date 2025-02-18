@@ -1101,16 +1101,21 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
 # ======================================================
 # Load and process PRO11/PRO12 variables
 # ======================================================
-# Load necessary libraries
 library(dplyr)
 library(tidyr)
+library(flextable)
+library(officer)
 
-# Step 1: Rename `_recommendation` to `recommendation`
+# Step 1: Load the dataset
+file_path <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_repeat_PRO11_PRO12.csv"
+repeat_data <- read.csv(file_path)
+
+# Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
-  rename(recommendation = `_recommendation`)
+  rename(recommendation = X_recommendation)
 
-# Step 2: Convert to long format, classify categories, and aggregate
-aggregated_repeat_data <- repeat_data %>%
+# Step 3: Convert to long format, classify categories, and aggregate
+processed_data <- repeat_data %>%
   pivot_longer(
     cols = starts_with("PRO12"),
     names_to = "Category_Variable",
@@ -1118,11 +1123,6 @@ aggregated_repeat_data <- repeat_data %>%
   ) %>%
   filter(Value == 1) %>%  # Filter where Value is 1
   mutate(
-    Example_Type = case_when(
-      g_conled == 1 ~ "Nationally led examples",
-      g_conled == 2 ~ "Institutionally led examples",
-      TRUE ~ "Unknown"
-    ),
     Category = case_when(
       Category_Variable == "PRO12A" ~ "Statistical framework/population group",
       Category_Variable == "PRO12B" ~ "Recommendations on data sources",
@@ -1137,39 +1137,72 @@ aggregated_repeat_data <- repeat_data %>%
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category)) %>%  # Remove rows with NA in Category
-  group_by(Example_Type, Category, recommendation) %>%
+  filter(!is.na(Category))  # Remove rows with NA in Category
+
+# Step 4: Create separate tables for nationally led and institutionally led examples
+nationally_led <- processed_data %>%
+  filter(g_conled == 1) %>%
+  group_by(Category, recommendation) %>%
   summarise(Count = n(), .groups = "drop") %>%
-  pivot_wider(
-    names_from = c(Example_Type, recommendation),
-    values_from = Count,
-    values_fill = 0
+  pivot_wider(names_from = recommendation, values_from = Count, values_fill = 0)
+
+institutionally_led <- processed_data %>%
+  filter(g_conled == 2) %>%
+  group_by(Category, recommendation) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = recommendation, values_from = Count, values_fill = 0)
+
+# Function to create FlexTable with multi-level header
+create_flextable <- function(data, table_title) {
+  
+  # Get unique recommendations
+  unique_recommendations <- unique(processed_data$recommendation)
+  num_recommendations <- length(unique_recommendations)
+  num_columns <- ncol(data)
+  
+  # Create header labels
+  header1 <- c("Category", rep(table_title, num_recommendations))
+  header2 <- c("Category", unique_recommendations)
+  
+  # Ensure headers match the number of columns
+  while (length(header1) < num_columns) {
+    header1 <- c(header1, "")
+  }
+  while (length(header2) < num_columns) {
+    header2 <- c(header2, "")
+  }
+  
+  # Create header mapping
+  header_mapping <- data.frame(
+    col_keys = colnames(data),
+    header1 = header1,
+    header2 = header2,
+    stringsAsFactors = FALSE
   )
+  
+  # Create flextable
+  flextable(data) %>%
+    set_header_df(mapping = header_mapping) %>%
+    merge_h(part = "header") %>%
+    theme_booktabs() %>%
+    bold(part = "header") %>%
+    autofit() %>%
+    bg(bg = "#f4cccc", i = nrow(data)) %>%  # Highlight the Total row
+    set_caption(table_title)
+}
 
-# Add Total row at the bottom
-final_data <- aggregated_repeat_data %>%
-  bind_rows(
-    summarise(aggregated_repeat_data, across(where(is.numeric), sum, na.rm = TRUE)) %>%
-      mutate(Category = "Total")
-  )
+# Step 5: Create separate tables for report
+text2_flextable_nationally_led <- create_flextable(nationally_led, "Nationally Led Examples")
+text2_flextable_institutionally_led <- create_flextable(institutionally_led, "Institutionally Led Examples")
 
-# Create a multi-level header in FlexTable
-text2_flextable <- flextable(final_data) %>%
-  set_header_df(mapping = data.frame(
-    col_keys = colnames(final_data),
-    header1 = c("Category", "Institutionally led examples", "Institutionally led examples", "Institutionally led examples",
-                "Nationally led examples", "Nationally led examples", "Nationally led examples"),
-    header2 = c("Category", "IRIS", "IRRS", "IROSS", "IRIS", "IRRS", "IROSS")
-  )) %>%
-  merge_h(part = "header") %>%  # Merge horizontally for the top-level header
-  theme_booktabs() %>%
-  bold(part = "header") %>%
-  autofit() %>%
-  bg(bg = "#f4cccc", i = nrow(final_data)) %>%  # Highlight the Total row
-  set_caption("Text 2: Aggregated Breakdown by Category, Example Type, and Recommendation Type")
+# Display both tables on the same page
+text2_flextable_nationally_led
+text2_flextable_institutionally_led
 
+# ======================================================
+# Create Word Document
+# ======================================================
 
-# Create Word document
 word_doc <- read_docx()
 
 # Add content to Word document
@@ -1185,14 +1218,16 @@ word_doc <- word_doc %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
   body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
-  body_add_flextable(text2_flextable) %>%  # Add missing %>%
+  body_add_flextable(text2_flextable_nationally_led) %>%  # Nationally Led Examples
+  body_add_break() %>%
+  body_add_flextable(text2_flextable_institutionally_led) %>%  # Institutionally Led Examples
   body_add_break() %>%
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%
   body_add_break() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
   body_add_gg(map_plot, width = 8, height = 6.4) %>%
-  body_end_section_landscape() %>%  # Apply landscape mode only for the map
+  body_end_section_landscape() %>%
   body_add_break() %>%
   body_add_flextable(figure9) %>%
   body_add_break() %>%
@@ -1200,13 +1235,15 @@ word_doc <- word_doc %>%
   body_add_flextable(institutional_flextable) %>%
   body_add_break() %>%
   body_add_par("Future Projects Breakdown by Source for 2024", style = "heading 2") %>%
-  body_add_flextable(source_summary_flextable)
+  body_add_flextable(source_summary_flextable) %>%
+  body_add_break()
 
-# Save the Word document
+# ======================================================
+# Save the Word Document
+# ======================================================
+
 word_output_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report GAIN 2024_Updated.docx"
 
-# Ensure the file is saved properly
 print(word_doc, target = word_output_file)
 
-# Message to confirm successful save
 message("Updated GAIN 2024 Annual Report saved successfully at: ", word_output_file)
