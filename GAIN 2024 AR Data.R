@@ -1226,6 +1226,20 @@ partnership_labels <- c(
 # Define Year Order
 year_order <- c("2021", "2022", "2023", "2024")
 
+# Count total nationally led projects
+nationally_led_count <- data %>%
+  filter(g_conled == 1) %>%
+  count(ryear) %>%
+  pivot_wider(names_from = ryear, values_from = n, values_fill = 0) %>%
+  mutate(Partnership_Type = "Total Nationally Led Projects")
+
+# Count total nationally led projects with partnerships
+partnership_count <- data %>%
+  filter(g_conled == 1, PRO17 == 1) %>%
+  count(ryear) %>%
+  pivot_wider(names_from = ryear, values_from = n, values_fill = 0) %>%
+  mutate(Partnership_Type = "Total Nationally Led Projects with Partnerships")
+
 # Filter for PRO17 == 1 and g_conled == 1
 partnership_data <- data %>%
   filter(g_conled == 1, PRO17 == 1) %>%  # Only nationally led projects with partnerships
@@ -1236,6 +1250,9 @@ partnership_data <- data %>%
   filter(Value == 1) %>%  # Keep only rows where partnership exists (Value == 1)
   count(Partnership_Type, ryear) %>%  # Count occurrences per year
   pivot_wider(names_from = ryear, values_from = n, values_fill = 0)  # Convert to wide format
+
+# Combine total count with detailed breakdown
+partnership_data <- bind_rows(nationally_led_count, partnership_count, partnership_data)
 
 # Ensure Year Order in Columns
 partnership_data <- partnership_data %>%
@@ -1258,7 +1275,6 @@ partnership_flextable <- flextable(partnership_data) %>%
 
 # Display Table in RStudio Viewer (for verification)
 partnership_flextable
-
 
 
 # ======================================================
