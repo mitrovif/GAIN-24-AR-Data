@@ -1,16 +1,69 @@
 # ======================================================
-# Tabulates `g_conled` by `ryear` and `PRO09`, replaces numeric values with descriptive text,
-# and exports the table to the specified folder with the filename "Annual Report GAIN 2024.xlsx".
-# Renames the Excel sheet to "Figure 6".
+# GAIN 2024 Annual Report Data Processing Script
+# - Uses a user-defined working directory
+# - Saves output files with a date stamp for version control
 # ======================================================
 
 # Load required libraries
 library(dplyr)
 library(tidyr)
+library(readr)
+library(readxl)
 library(writexl)
+library(openxlsx)
+library(officer)
+library(flextable)
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggrepel)
+
+# ======================================================
+# Set Working Directory Dynamically
+# ======================================================
+# Paste your copied Windows file path here
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - 905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-27_13-42-02"
+
+# Automatically replace backslashes (\) with forward slashes (/)
+working_dir <- gsub("\\\\", "/", working_dir)
+
+# Set the working directory
+setwd(working_dir)
+
+# Confirm the working directory
+message("Working directory set to: ", getwd())
+
+# Get current date in YYYY-MM-DD format
+current_date <- format(Sys.Date(), "%Y-%m-%d")  # Define the missing object
+# ======================================================
+# Load Group Roster Dataset with Relative Path
+# ======================================================
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
+group_roster <- read.csv(group_roster_file)
+
+# ======================================================
+# Save Excel Output in the Same Folder
+# ======================================================
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
+
+# Save output
+write_xlsx(list(`Figure 6` = summary_table), path = output_excel_file)
+
+message("Summary table exported to 'Annual Report GAIN 2024.xlsx'.")
+
+
+
+# ======================================================
+# Tabulates `g_conled` by `ryear` and `PRO09`, replaces numeric values with descriptive text,
+# and exports the table to the specified folder with the filename "Annual Report GAIN 2024.xlsx".
+# Renames the Excel sheet to "Figure 6".
+# ======================================================
+
+
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter and group data to create a summary table
@@ -45,8 +98,7 @@ colnames(summary_table) <- c(
 )
 
 # Export to the specified folder with the updated name and sheet title
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
-
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 # Save the table with the renamed sheet using writexl
 write_xlsx(list(`Figure 6` = summary_table), path = output_excel_file)
 
@@ -63,7 +115,7 @@ library(tidyr)
 library(writexl)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter examples where PRO09 == 1
@@ -123,8 +175,7 @@ recuse_table <- recuse_table %>%
   select(-`IRRS + IRIS`, -`IRRS + IROSS`, -`IRIS + IROSS`, -`All 3 Combined`)
 
 # Export the table to Excel in a new sheet named "Figure 7"
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
-
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 # Add the new sheet to the Excel file
 write_xlsx(
   list(
@@ -145,7 +196,7 @@ library(readxl)
 library(writexl)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter data based on conditions: PRO09 == 1 and g_conled == 1
@@ -170,7 +221,7 @@ summary_table <- filtered_data %>%
 colnames(summary_table)[2:ncol(summary_table)] <- paste0("Year: ", colnames(summary_table)[2:ncol(summary_table)])
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 existing_sheets <- readxl::excel_sheets(output_excel_file)
 existing_data <- lapply(existing_sheets, function(sheet) readxl::read_excel(output_excel_file, sheet = sheet))
 names(existing_data) <- existing_sheets
@@ -195,7 +246,7 @@ library(readxl)
 library(writexl)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter for country-led examples (g_conled == 1)
@@ -253,7 +304,7 @@ colnames(summary_table) <- c(
 )
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 existing_sheets <- readxl::excel_sheets(output_excel_file)
 existing_data <- lapply(existing_sheets, function(sheet) readxl::read_excel(output_excel_file, sheet = sheet))
 names(existing_data) <- existing_sheets
@@ -291,7 +342,7 @@ library(rnaturalearthdata)
 library(ggrepel)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter for 2024 examples (ryear == 2024)
@@ -349,11 +400,13 @@ world_map_plot <- ggplot(data_map) +
   )
 
 # Save the map plot as an image
-map_image_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/World_Map_2024.png"
+map_image_file <- file.path(working_dir, paste0("World_Map_", current_date, ".png"))
+
 ggsave(map_image_file, world_map_plot, width = 10, height = 6)
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
+
 wb <- loadWorkbook(output_excel_file)
 
 # Add the new table to a new sheet named "Additional Table 1"
@@ -387,7 +440,7 @@ library(writexl)
 library(tidyr)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Filter for relevant years, country-led examples, and use of recommendations
@@ -442,7 +495,8 @@ summary_table <- filtered_data %>%
 colnames(summary_table)[1] <- "Year"
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
+
 existing_sheets <- readxl::excel_sheets(output_excel_file)
 existing_data <- lapply(existing_sheets, function(sheet) readxl::read_excel(output_excel_file, sheet = sheet))
 names(existing_data) <- existing_sheets
@@ -471,7 +525,7 @@ library(openxlsx)
 library(tidyr)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Function to create CTABLES-like breakdown for partnerships
@@ -509,7 +563,7 @@ partnerships_ctables <- generate_partnership_ctables(
 )
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 wb <- loadWorkbook(output_excel_file)
 
 # Add the Partnerships CTABLES to the "Annual Report" sheet
@@ -540,7 +594,7 @@ library(openxlsx)
 library(tidyr)
 
 # Load the group roster dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # Generate Institutional Implementation breakdown table
@@ -573,7 +627,7 @@ institutional_implementation_table <- group_roster %>%
   arrange(ryear, morganization, Organization_Level, Source, Use_of_Recommendations)
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 wb <- loadWorkbook(output_excel_file)
 
 # Add the Institutional Implementation table to a new sheet
@@ -602,7 +656,7 @@ library(openxlsx)
 library(tidyr)
 
 # Load the group roster dataset
-group_roster2_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster2.csv"
+group_roster2_file <- file.path(working_dir, "analysis_ready_group_roster2.csv")
 group_roster2 <- read.csv(group_roster2_file)
 
 # Ensure all relevant FPR05 columns are numeric before pivoting
@@ -675,7 +729,7 @@ combined_future_projects <- bind_rows(
 )
 
 # Load the existing Excel file
-output_excel_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report 2024/Annual Report GAIN 2024.xlsx"
+output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 wb <- loadWorkbook(output_excel_file)
 
 # Add the combined Future Projects table to a new sheet
@@ -712,8 +766,9 @@ accent_color <- "#072d62"
 background_color <- "#f0f8ff"
 
 # Load dataset
-group_roster_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
+
 
 # Function to create styled flextables
 create_flextable <- function(data, title) {
@@ -1107,7 +1162,7 @@ library(flextable)
 library(officer)
 
 # Step 1: Load the dataset
-file_path <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_repeat_PRO11_PRO12.csv"
+file_path <- file.path(working_dir, "analysis_ready_repeat_PRO11_PRO12.csv")
 repeat_data <- read.csv(file_path)
 
 # Step 2: Rename `_recommendation` to `recommendation`
@@ -1213,7 +1268,7 @@ accent_color <- "#072d62"
 background_color <- "#f0f8ff"
 
 # Load dataset
-file_path <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/10 Data/Analysis Ready Files/analysis_ready_group_roster.csv"
+file_path <- file.path(working_dir, "analysis_ready_group_roster.csv")
 data <- read.csv(file_path)
 
 # Define Ordered Partnership Type Labels
@@ -1323,8 +1378,14 @@ word_doc <- word_doc %>%
 # Save the Word Document
 # ======================================================
 
-word_output_file <- "C:/Users/mitro/UNHCR/EGRISS Secretariat - 905 - Implementation of Recommendations/01_GAIN Survey/Integration & GAIN Survey/EGRISS GAIN Survey 2024/11 Reporting/Annual Report GAIN 2024_Updated.docx"
+# Get current date in YYYY-MM-DD format
+current_date <- format(Sys.Date(), "%Y-%m-%d")
 
+# Define relative output file path with date
+word_output_file <- file.path(working_dir, paste0("Annual_Report_GAIN_2024_", current_date, ".docx"))
+
+# Save the Word document
 print(word_doc, target = word_output_file)
 
+# Display message confirming successful save
 message("Updated GAIN 2024 Annual Report saved successfully at: ", word_output_file)
