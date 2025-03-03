@@ -22,6 +22,7 @@ library(ggrepel)
 # ======================================================
 # Set Working Directory Dynamically
 # ======================================================
+
 # Paste your copied Windows file path here
 working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - 905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-27_13-42-02"
 
@@ -36,15 +37,18 @@ message("Working directory set to: ", getwd())
 
 # Get current date in YYYY-MM-DD format
 current_date <- format(Sys.Date(), "%Y-%m-%d")  # Define the missing object
+
 # ======================================================
 # Load Group Roster Dataset with Relative Path
 # ======================================================
+
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
 # ======================================================
 # Save Excel Output in the Same Folder
 # ======================================================
+
 output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
 
 # Save output
@@ -52,15 +56,11 @@ write_xlsx(list(`Figure 6` = summary_table), path = output_excel_file)
 
 message("Summary table exported to 'Annual Report GAIN 2024.xlsx'.")
 
-
-
 # ======================================================
 # Tabulates `g_conled` by `ryear` and `PRO09`, replaces numeric values with descriptive text,
 # and exports the table to the specified folder with the filename "Annual Report GAIN 2024.xlsx".
 # Renames the Excel sheet to "Figure 6".
 # ======================================================
-
-
 
 # Load the group roster dataset
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
@@ -186,6 +186,7 @@ write_xlsx(
 )
 
 message("Summary table for `g_recuse` exported to 'Figure 7' in the Excel file.")
+
 # ======================================================
 # Filter country-led projects using recommendations, generate a user-friendly regions table, and add it to the GAIN report Excel.
 # ======================================================
@@ -422,7 +423,6 @@ saveWorkbook(wb, output_excel_file, overwrite = TRUE)
 
 message("Summary table and world map added to the Annual Report Excel file.")
 
-
 # ======================================================
 # Generate a table of reported challenges for 2023 and 2024, based on country-led examples.
 # This script:
@@ -576,6 +576,7 @@ writeData(wb, "Annual Report", partnerships_ctables, startRow = 1, startCol = 1,
 saveWorkbook(wb, output_excel_file, overwrite = TRUE)
 
 message("Partnerships CTABLES breakdown added to the Annual Report Excel file.")
+                        
 # ======================================================
 # This script generates a table for Institutional Implementation in the Annual Report GAIN 2024.
 # It includes:
@@ -640,6 +641,7 @@ writeData(wb, "Institutional Implementation", institutional_implementation_table
 saveWorkbook(wb, output_excel_file, overwrite = TRUE)
 
 message("Institutional Implementation table with breakdowns added to the Annual Report Excel file.")
+                        
 # ======================================================
 # This script generates the Future Projects tables for the Annual Report GAIN 2024.
 # - Three separate breakdowns: by total sources, by organization type, and by quarter.
@@ -742,6 +744,7 @@ writeData(wb, "Future Projects", combined_future_projects, startRow = 1, startCo
 saveWorkbook(wb, output_excel_file, overwrite = TRUE)
 
 message("Future Projects tables added to the Annual Report Excel file.")
+                        
 # ======================================================
 # R Script for Enhanced GAIN 2024 Annual Report (Word)
 # ======================================================
@@ -769,7 +772,6 @@ background_color <- "#f0f8ff"
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 
-
 # Function to create styled flextables
 create_flextable <- function(data, title) {
   flextable(data) %>%
@@ -788,6 +790,7 @@ create_flextable <- function(data, title) {
 # ======================================================
 # Summary of Country-Led Examples (Figure 6)
 # ======================================================
+                        
 summary_table <- group_roster %>%
   group_by(ryear, g_conled, PRO09) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -816,9 +819,11 @@ summary_table <- summary_table %>%
 summary_table$`Example Lead` <- ifelse(duplicated(summary_table$`Example Lead`), "", summary_table$`Example Lead`)
 
 figure6 <- create_flextable(summary_table, "Figure 6: Summary of Country-Led Examples")
+                        
 # ======================================================
 # Use of Recommendations (Figure 7) - Updated
 # ======================================================
+                        
 # Function to create styled flextables
 create_flextable <- function(data, title) {
   flextable(data) %>%
@@ -889,9 +894,11 @@ figure7 <- flextable(recuse_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Figure 7: Use of Recommendations")
+                        
 # ======================================================
 # Figure 8 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
 # ======================================================
+                        
 # Step 1: Prepare the data
 aggregated_data <- group_roster %>%
   filter(g_conled == 1) %>%  # Filter for g_conled == 1
@@ -957,6 +964,7 @@ figure8_flextable <- flextable(aggregated_data) %>%
 # ======================================================
 # Regional Analysis (Text 1)
 # ======================================================
+                        
 regional_data <- group_roster %>%
   filter(PRO09 == 1, g_conled == 1) %>%
   group_by(region, ryear) %>%
@@ -991,6 +999,7 @@ map_plot <- ggplot() +
 # ======================================================
 # Challenges Reported (Figure 9) - Transposed and with Labels
 # ======================================================
+                        
 challenge_labels <- c(
   "PRO20.A" = "NON-RESPONSE BIAS",
   "PRO20.B" = "SAMPLING ERRORS",
@@ -1016,9 +1025,11 @@ challenges_data <- group_roster %>%
   pivot_wider(names_from = ryear, values_from = Count, values_fill = 0)
 
 figure9 <- create_flextable(challenges_data, "Figure 9: Challenges Reported")
+                        
 # ======================================================
 # Generate Institutional Implementation breakdown table
 # ======================================================
+                        
 institutional_implementation_table <- group_roster %>%
   filter(g_conled == 2) %>%
   mutate(
@@ -1062,6 +1073,7 @@ institutional_flextable <- flextable(institutional_implementation_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Institutional Implementation Breakdown")
+                        
 # ======================================================
 # Add Future Projects 
 # ======================================================
@@ -1096,7 +1108,6 @@ source_summary <- group_roster2 %>%
   rename(Count = n) %>%
   bind_rows(tibble(Source = "Total", Count = sum(.$Count)))
 
-
 # Create a FlexTable for Word
 source_summary_flextable <- flextable(source_summary) %>%
   theme_booktabs() %>%
@@ -1107,6 +1118,7 @@ source_summary_flextable <- flextable(source_summary) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Future Projects Breakdown by Source for 2024")
+                        
 # ======================================================
 # Unique Country Count for Use of Recommendations (PRO09 == 1) by Leadership Type
 # ======================================================
@@ -1153,9 +1165,11 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")
+                        
 # ======================================================
 # Load and process PRO11/PRO12 variables
 # ======================================================
+
 library(dplyr)
 library(tidyr)
 library(flextable)
@@ -1171,28 +1185,41 @@ repeat_data <- repeat_data %>%
 
 # Step 3: Convert to long format, classify categories, and aggregate
 processed_data <- repeat_data %>%
-  pivot_longer(
-    cols = starts_with("PRO12"),
-    names_to = "Category_Variable",
-    values_to = "Value"
-  ) %>%
-  filter(Value == 1) %>%  # Filter where Value is 1
+  # Rename columns to keep only uppercase letters and remove unwanted strings
+  rename_with(~ gsub("[^A-Z]", "", .), starts_with("PRO12")) %>%
+  rename_with(~ gsub("PROWPROA", "PRO12", .)) %>%
+  # Create a list of columns that start with PRO12 (after renaming)
+  {
+    renamed_cols <- names(.)[grepl("^PRO12", names(.))]
+    
+    # Exclude the first and last PRO12 columns
+    selected_cols <- renamed_cols[-c(1, length(renamed_cols))]
+    
+    # Pivot longer on the selected columns
+    pivot_data <- pivot_longer(., 
+                               cols = selected_cols,
+                               names_to = "Category_Variable", 
+                               values_to = "Value")
+    pivot_data  # Return the pivoted data to continue the pipeline
+  } %>%
+  # Filter where Value is 1
+  filter(Value == 1) %>%
   mutate(
     Category = case_when(
-      Category_Variable == "PRO12A" ~ "Statistical framework/population group",
-      Category_Variable == "PRO12B" ~ "Recommendations on data sources",
-      Category_Variable == "PRO12C" ~ "Coordination",
-      Category_Variable == "PRO12D" ~ "Data sharing",
-      Category_Variable == "PRO12E" ~ "Analysis",
-      Category_Variable == "PRO12F" ~ "Indicator selection",
-      Category_Variable == "PRO12G" ~ "Data integration",
-      Category_Variable == "PRO12H" ~ "Dissemination",
-      Category_Variable == "PRO12I" ~ "Institutional or sectoral strategy",
-      Category_Variable == "PRO12J" ~ "Other (specify)",
+      Category_Variable == "PRO12STATISTICALFRAMEWORKPOPULATIONGROUP" ~ "Statistical framework/population group",
+      Category_Variable == "PRO12RECOMMENDATIONSONDATASOURCES" ~ "Recommendations on data sources",
+      Category_Variable == "PRO12COORDINATION" ~ "Coordination",
+      Category_Variable == "PRO12DATASHARING" ~ "Data sharing",
+      Category_Variable == "PRO12ANALYSIS" ~ "Analysis",
+      Category_Variable == "PRO12INDICATORSELECTION" ~ "Indicator selection",
+      Category_Variable == "PRO12DATAINTEGRATION" ~ "Data integration",
+      Category_Variable == "PRO12DISSEMINATION" ~ "Dissemination",
+      Category_Variable == "PRO12INSTITUTIONALORSECTORALSTRATEGY" ~ "Institutional or sectoral strategy",
+      Category_Variable == "PRO12OTHERSPECIFY" ~ "Other (specify)",
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category))  # Remove rows with NA in Category
+  filter(!is.na(Category))  # Filter out NA categories
 
 # Step 4: Create separate tables for nationally led and institutionally led examples
 nationally_led <- processed_data %>%
@@ -1253,6 +1280,7 @@ text2_flextable_institutionally_led <- create_flextable(institutionally_led, "In
 # Display both tables on the same page
 text2_flextable_nationally_led
 text2_flextable_institutionally_led
+                        
 # ======================================================
 # Breakdown of Nationally Led Partnerships
 # ======================================================
@@ -1330,7 +1358,6 @@ partnership_flextable <- flextable(partnership_data) %>%
 
 # Display Table in RStudio Viewer (for verification)
 partnership_flextable
-
 
 # ======================================================
 # Create Word Document
