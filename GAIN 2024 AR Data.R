@@ -22,14 +22,16 @@ library(ggrepel)
 # ======================================================
 # Set Working Directory Dynamically
 # ======================================================
-# Paste your copied Windows file path here
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - 905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-27_13-42-02"
+# Copy-Paste your Windows file path (with backslashes)
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-28_16-38-57"
 
 # Automatically replace backslashes (\) with forward slashes (/)
 working_dir <- gsub("\\\\", "/", working_dir)
 
-# Set the working directory
+
+# Set working directory
 setwd(working_dir)
+
 
 # Confirm the working directory
 message("Working directory set to: ", getwd())
@@ -1168,7 +1170,10 @@ repeat_data <- read.csv(file_path)
 # Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
   rename(recommendation = X_recommendation)
-
+#✅ Convert all PRO12 columns to numeric before pivoting
+pro12_columns <- grep("^PRO12", names(repeat_data), value = TRUE)
+repeat_data <- repeat_data %>%
+  mutate(across(all_of(pro12_columns), ~ as.numeric(.)))  # Convert PRO12 columns to numeric
 # Step 3: Convert to long format, classify categories, and aggregate
 processed_data <- repeat_data %>%
   pivot_longer(
