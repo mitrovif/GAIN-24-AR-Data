@@ -24,11 +24,10 @@ library(ggrepel)
 # ======================================================
 
 # Copy-Paste your Windows file path (with backslashes)
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-28_16-38-57"
-
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-03_16-23-06"
 
 # Paste your copied Windows file path here
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - 905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-02-27_13-42-02"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-03_16-23-06"
 
 
 # Automatically replace backslashes (\) with forward slashes (/)
@@ -1173,14 +1172,15 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")
                         
-# ======================================================
-# Load and process PRO11/PRO12 variables
-# ======================================================
-
 library(dplyr)
 library(tidyr)
 library(flextable)
 library(officer)
+library(readr)
+
+# ======================================================
+# Load and process PRO11/PRO12 variables
+# ======================================================
 
 # Step 1: Load the dataset
 file_path <- file.path(working_dir, "analysis_ready_repeat_PRO11_PRO12.csv")
@@ -1189,107 +1189,81 @@ repeat_data <- read.csv(file_path)
 # Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
   rename(recommendation = X_recommendation)
-#✅ Convert all PRO12 columns to numeric before pivoting
-pro12_columns <- grep("^PRO12", names(repeat_data), value = TRUE)
+
+# ✅ Convert all PRO12 columns to numeric before pivoting
+pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)  # Starts from PRO12A, excludes PRO12
 repeat_data <- repeat_data %>%
   mutate(across(all_of(pro12_columns), ~ as.numeric(.)))  # Convert PRO12 columns to numeric
+
 # Step 3: Convert to long format, classify categories, and aggregate
 processed_data <- repeat_data %>%
-  # Rename columns to keep only uppercase letters and remove unwanted strings
-  rename_with(~ gsub("[^A-Z]", "", .), starts_with("PRO12")) %>%
-  rename_with(~ gsub("PROWPROA", "PRO12", .)) %>%
-  # Create a list of columns that start with PRO12 (after renaming)
-  {
-    renamed_cols <- names(.)[grepl("^PRO12", names(.))]
-    
-    # Exclude the first and last PRO12 columns
-    selected_cols <- renamed_cols[-c(1, length(renamed_cols))]
-    
-    # Pivot longer on the selected columns
-    pivot_data <- pivot_longer(., 
-                               cols = selected_cols,
-                               names_to = "Category_Variable", 
-                               values_to = "Value")
-    pivot_data  # Return the pivoted data to continue the pipeline
-  } %>%
+  pivot_longer(
+    cols = all_of(pro12_columns),
+    names_to = "Category_Variable",
+    values_to = "Value"
+  ) %>%
+  
   # Filter where Value is 1
   filter(Value == 1) %>%
+  
+  # Classify PRO12 categories
   mutate(
     Category = case_when(
-      Category_Variable == "PRO12STATISTICALFRAMEWORKPOPULATIONGROUP" ~ "Statistical framework/population group",
-      Category_Variable == "PRO12RECOMMENDATIONSONDATASOURCES" ~ "Recommendations on data sources",
-      Category_Variable == "PRO12COORDINATION" ~ "Coordination",
-      Category_Variable == "PRO12DATASHARING" ~ "Data sharing",
-      Category_Variable == "PRO12ANALYSIS" ~ "Analysis",
-      Category_Variable == "PRO12INDICATORSELECTION" ~ "Indicator selection",
-      Category_Variable == "PRO12DATAINTEGRATION" ~ "Data integration",
-      Category_Variable == "PRO12DISSEMINATION" ~ "Dissemination",
-      Category_Variable == "PRO12INSTITUTIONALORSECTORALSTRATEGY" ~ "Institutional or sectoral strategy",
-      Category_Variable == "PRO12OTHERSPECIFY" ~ "Other (specify)",
+      Category_Variable == "PRO12A" ~ "Statistical framework/population group",
+      Category_Variable == "PRO12B" ~ "Recommendations on data sources",
+      Category_Variable == "PRO12C" ~ "Coordination",
+      Category_Variable == "PRO12D" ~ "Data sharing",
+      Category_Variable == "PRO12E" ~ "Analysis",
+      Category_Variable == "PRO12F" ~ "Indicator selection",
+      Category_Variable == "PRO12G" ~ "Data integration",
+      Category_Variable == "PRO12H" ~ "Dissemination",
+      Category_Variable == "PRO12I" ~ "Institutional or sectoral strategy",
+      Category_Variable == "PRO12X" ~ "Other (specify)",
+      Category_Variable == "PRO12Z" ~ "Don't know",
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category))  # Filter out NA categories
+  filter(!is.na(Category))  # Remove rows with missing categories
 
-# Step 4: Create separate tables for nationally led and institutionally led examples
-nationally_led <- processed_data %>%
-  filter(g_conled == 1) %>%
-  group_by(Category, recommendation) %>%
+# ✅ Convert to `flextable` for Word output
+processed_data_flextable <- processed_data %>%
+  select(recommendation, Category) %>%
+  group_by(recommendation, Category) %>%
   summarise(Count = n(), .groups = "drop") %>%
-  pivot_wider(names_from = recommendation, values_from = Count, values_fill = 0)
+  flextable() %>%
+  set_header_labels(
+    recommendation = "Recommendation",
+    Category = "Category",
+    Count = "Count"
+  ) %>%
+  autofit()
 
-institutionally_led <- processed_data %>%
-  filter(g_conled == 2) %>%
-  group_by(Category, recommendation) %>%
-  summarise(Count = n(), .groups = "drop") %>%
-  pivot_wider(names_from = recommendation, values_from = Count, values_fill = 0)
+# ======================================================
+# Add to Word document (Append New Table Without Replacing Old Ones)
+# ======================================================
 
-# Function to create FlexTable with multi-level header
-create_flextable <- function(data, table_title) {
-  
-  # Get unique recommendations
-  unique_recommendations <- unique(processed_data$recommendation)
-  num_recommendations <- length(unique_recommendations)
-  num_columns <- ncol(data)
-  
-  # Create header labels
-  header1 <- c("Category", rep(table_title, num_recommendations))
-  header2 <- c("Category", unique_recommendations)
-  
-  # Ensure headers match the number of columns
-  while (length(header1) < num_columns) {
-    header1 <- c(header1, "")
-  }
-  while (length(header2) < num_columns) {
-    header2 <- c(header2, "")
-  }
-  
-  # Create header mapping
-  header_mapping <- data.frame(
-    col_keys = colnames(data),
-    header1 = header1,
-    header2 = header2,
-    stringsAsFactors = FALSE
-  )
-  
-  # Create flextable
-  flextable(data) %>%
-    set_header_df(mapping = header_mapping) %>%
-    merge_h(part = "header") %>%
-    theme_booktabs() %>%
-    bold(part = "header") %>%
-    autofit() %>%
-    bg(bg = "#f4cccc", i = nrow(data)) %>%  # Highlight the Total row
-    set_caption(table_title)
-}
+# Load the existing Word document
+word_doc <- read_docx()
 
-# Step 5: Create separate tables for report
-text2_flextable_nationally_led <- create_flextable(nationally_led, "Nationally Led Examples")
-text2_flextable_institutionally_led <- create_flextable(institutionally_led, "Institutionally Led Examples")
+# Append the new table under the existing section
+word_doc <- word_doc %>%
+  body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
+  body_add_flextable(text2_flextable_nationally_led) %>%  # Nationally Led Examples
+  body_add_break() %>%
+  body_add_flextable(text2_flextable_institutionally_led) %>%  # Institutionally Led Examples
+  body_add_break() %>%
+  body_add_par("Summary of PRO11/PRO12 Data by Category", style = "heading 3") %>%  # Subheading for New Table
+  body_add_flextable(processed_data_flextable) %>%  # New Table
+  body_add_break()
 
-# Display both tables on the same page
-text2_flextable_nationally_led
-text2_flextable_institutionally_led
+# Save the final Word document
+output_file <- file.path(working_dir, "GAIN_2024_Annual_Report.docx")
+print(word_doc, target = output_file)
+
+# ✅ Confirm success
+message("Word document updated with PRO11/PRO12 data without replacing previous tables!")
+
+
                         
 # ======================================================
 # Breakdown of Nationally Led Partnerships
