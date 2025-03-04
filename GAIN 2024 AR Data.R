@@ -1178,17 +1178,19 @@ library(flextable)
 library(officer)
 library(readr)
 
+
 # ======================================================
 # Load and process PRO11/PRO12 variables
 # ======================================================
 
 # Step 1: Load the dataset
 file_path <- file.path(working_dir, "analysis_ready_repeat_PRO11_PRO12.csv")
-repeat_data <- read.csv(file_path)
+repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)  # Ensure recommendation is treated as text
 
 # Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
-  rename(recommendation = X_recommendation)
+  rename(recommendation = X_recommendation) %>%
+  mutate(recommendation = as.character(recommendation))  # Ensure it's a text variable
 
 # ✅ Convert all PRO12 columns to numeric before pivoting
 pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)  # Starts from PRO12A, excludes PRO12
@@ -1225,44 +1227,44 @@ processed_data <- repeat_data %>%
   ) %>%
   filter(!is.na(Category))  # Remove rows with missing categories
 
-# ✅ Convert to `flextable` for Word output
-processed_data_flextable <- processed_data %>%
-  select(recommendation, Category) %>%
-  group_by(recommendation, Category) %>%
-  summarise(Count = n(), .groups = "drop") %>%
-  flextable() %>%
+# ======================================================
+# Merge Nationally Led and Institutionally Led Tables
+# ======================================================
+
+# Function to summarize counts by Category and Recommendation
+summarize_table <- function(data, g_conled_value) {
+  data %>%
+    filter(g_conled == g_conled_value) %>%
+    count(Category, recommendation) %>%
+    pivot_wider(names_from = recommendation, values_from = n, values_fill = 0)  
+}
+
+# Create separate tables for Nationally and Institutionally Led data
+nationally_led_data <- summarize_table(processed_data, 1)
+institutionally_led_data <- summarize_table(processed_data, 2)
+
+# Merge them side by side
+merged_table <- nationally_led_data %>%
+  left_join(institutionally_led_data, by = "Category", suffix = c("_National", "_Institutional"))
+
+# Convert to flextable with an extra merged row for headers
+merged_flextable <- flextable(merged_table) %>%
+  add_header_row(values = c("", "Nationally Led", "Institutionally Led"), colwidths = c(1, 3, 3)) %>%
   set_header_labels(
-    recommendation = "Recommendation",
     Category = "Category",
-    Count = "Count"
+    IRRS_National = "IRRS",
+    IRIS_National = "IRIS",
+    IROSS_National = "IROSS",
+    IRRS_Institutional = "IRRS",
+    IRIS_Institutional = "IRIS",
+    IROSS_Institutional = "IROSS"
   ) %>%
-  autofit()
-
-# ======================================================
-# Add to Word document (Append New Table Without Replacing Old Ones)
-# ======================================================
-
-# Load the existing Word document
-word_doc <- read_docx()
-
-# Append the new table under the existing section
-word_doc <- word_doc %>%
-  body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
-  body_add_flextable(text2_flextable_nationally_led) %>%  # Nationally Led Examples
-  body_add_break() %>%
-  body_add_flextable(text2_flextable_institutionally_led) %>%  # Institutionally Led Examples
-  body_add_break() %>%
-  body_add_par("Summary of PRO11/PRO12 Data by Category", style = "heading 3") %>%  # Subheading for New Table
-  body_add_flextable(processed_data_flextable) %>%  # New Table
-  body_add_break()
-
-# Save the final Word document
-output_file <- file.path(working_dir, "GAIN_2024_Annual_Report.docx")
-print(word_doc, target = output_file)
-
-# ✅ Confirm success
-message("Word document updated with PRO11/PRO12 data without replacing previous tables!")
-
+  autofit() %>%
+  theme_vanilla() %>%  # Base theme
+  color(part = "header", color = "white") %>%
+  bg(part = "header", bg = "#003366") %>%  # Dark blue EGRISS header
+  bold(part = "header") %>%
+  bg(i = seq(1, nrow(merged_table), 2), bg = "#DDEEFF")  # Light blue alternating rows
 
                         
 # ======================================================
@@ -1344,28 +1346,30 @@ partnership_flextable <- flextable(partnership_data) %>%
 partnership_flextable
 
 # ======================================================
-# Create Word Document
+# Add to Word document
 # ======================================================
 
+# Load the existing Word document
 word_doc <- read_docx()
 
-# Add content to Word document
+# Add structured content to Word
 word_doc <- word_doc %>%
   body_add_par("GAIN 2024 Annual Report", style = "heading 1") %>%
-  body_add_flextable(figure6) %>%
+  body_add_flextable(figure6) %>%  
   body_add_break() %>%
   body_add_flextable(figure7) %>%
   body_add_break() %>%
   body_add_par("Figure 8: Breakdown by Year, Use of Recommendations, and Source", style = "heading 2") %>%
-  body_add_flextable(figure8_flextable) %>%
+  body_add_flextable(figure8_flextable) %>%  
   body_add_break() %>%
-  body_add_flextable(text1) %>%
+  body_add_flextable(text1) %>%  
   body_add_break() %>%
+  
+  # **Updated Section with Merged Table**
   body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
-  body_add_flextable(text2_flextable_nationally_led) %>%  # Nationally Led Examples
+  body_add_flextable(merged_flextable) %>%  # **Merged Table**
   body_add_break() %>%
-  body_add_flextable(text2_flextable_institutionally_led) %>%  # Institutionally Led Examples
-  body_add_break() %>%
+  
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%  
   body_add_break() %>%
@@ -1376,13 +1380,13 @@ word_doc <- word_doc %>%
   body_add_flextable(figure9) %>%
   body_add_break() %>%
   body_add_par("Institutional Implementation Breakdown", style = "heading 2") %>%
-  body_add_flextable(institutional_flextable) %>%
+  body_add_flextable(institutional_flextable) %>%  
   body_add_break() %>%
   body_add_par("Future Projects Breakdown by Source for 2024", style = "heading 2") %>%
-  body_add_flextable(source_summary_flextable) %>%
+  body_add_flextable(source_summary_flextable) %>%  
   body_add_break() %>%
   body_add_par("Breakdown of Nationally Led Partnerships by Year and Type", style = "heading 2") %>%
-  body_add_flextable(partnership_flextable) %>%
+  body_add_flextable(partnership_flextable) %>%  
   body_add_break()
 
 # ======================================================
@@ -1392,11 +1396,11 @@ word_doc <- word_doc %>%
 # Get current date in YYYY-MM-DD format
 current_date <- format(Sys.Date(), "%Y-%m-%d")
 
-# Define relative output file path with date
+# Define output file path with date
 word_output_file <- file.path(working_dir, paste0("Annual_Report_GAIN_2024_", current_date, ".docx"))
 
 # Save the Word document
 print(word_doc, target = word_output_file)
 
-# Display message confirming successful save
+# ✅ Confirm success
 message("Updated GAIN 2024 Annual Report saved successfully at: ", word_output_file)
