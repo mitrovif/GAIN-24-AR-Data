@@ -22,12 +22,11 @@ library(ggrepel)
 # ======================================================
 # Set Working Directory Dynamically
 # ======================================================
-
 # Copy-Paste your Windows file path (with backslashes)
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-03_16-23-06"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-06_15-08-40"
 
 # Paste your copied Windows file path here
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-03_16-23-06"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-06_15-08-40"
 
 
 # Automatically replace backslashes (\) with forward slashes (/)
@@ -1290,13 +1289,24 @@ source_summary_flextable <- flextable(source_summary) %>%
 
 # Function to calculate unique country counts by `g_conled`
 calculate_unique_country_count <- function(group_roster, leadership_type) {
-  group_roster %>%
+  df <- group_roster %>%
     filter(PRO09 == 1, g_conled == leadership_type) %>%  # Filter for Use of Recommendations and Leadership Type
     group_by(region, ryear) %>%
     summarise(unique_countries = n_distinct(mcountry), .groups = "drop") %>%
-    pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0) %>%
-    mutate(Total = rowSums(across(`2021`:`2024`), na.rm = TRUE)) %>%
+    pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0)
+  
+  # Ensure all year columns exist, even if missing from data
+  for (year in c("2021", "2022", "2023", "2024")) {
+    if (!(year %in% colnames(df))) {
+      df[[year]] <- 0  # Add missing year column with default 0
+    }
+  }
+  
+  df <- df %>%
+    mutate(Total = rowSums(across(c("2021", "2022", "2023", "2024")), na.rm = TRUE)) %>%
     mutate(Leadership = if_else(leadership_type == 1, "Nationally Led", "Institutionally Led"))
+  
+  return(df)
 }
 
 # Calculate unique country counts for nationally and institutionally led examples
@@ -1311,8 +1321,17 @@ total_unique_summary <- group_roster %>%
   filter(PRO09 == 1) %>%
   group_by(ryear) %>%
   summarise(unique_countries = n_distinct(mcountry), .groups = "drop") %>%
-  pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0) %>%
-  mutate(Total = rowSums(across(`2021`:`2024`), na.rm = TRUE)) %>%
+  pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0)
+
+# Ensure all year columns exist in the summary
+for (year in c("2021", "2022", "2023", "2024")) {
+  if (!(year %in% colnames(total_unique_summary))) {
+    total_unique_summary[[year]] <- 0
+  }
+}
+
+total_unique_summary <- total_unique_summary %>%
+  mutate(Total = rowSums(across(c("2021", "2022", "2023", "2024")), na.rm = TRUE)) %>%
   mutate(region = "Total Unique Countries", Leadership = "Total")
 
 # Final table with combined counts and summary
@@ -1329,8 +1348,7 @@ unique_country_flextable <- flextable(final_unique_country_table) %>%
   border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
-  set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")
-                        
+  set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")                  
 library(dplyr)
 library(tidyr)
 library(flextable)
