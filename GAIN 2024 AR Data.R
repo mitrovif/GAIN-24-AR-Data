@@ -23,10 +23,10 @@ library(ggrepel)
 # Set Working Directory Dynamically
 # ======================================================
 # Copy-Paste your Windows file path (with backslashes)
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-06_15-08-40"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-07_10-24-24"
 
 # Paste your copied Windows file path here
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-06_15-08-40"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-07_10-24-24"
 
 
 # Automatically replace backslashes (\) with forward slashes (/)
@@ -827,28 +827,21 @@ summary_table <- summary_table %>%
 
 summary_table$`Example Lead/Placement` <- ifelse(duplicated(summary_table$`Example Lead/Placement`), "", summary_table$`Example Lead/Placement`)
 
-# Create Graph Data Table Using Count Approach
-
-# Select only numeric columns for aggregation
-numeric_cols <- summary_table %>%
-  select(where(is.numeric)) %>%
-  names()
-
 # Overall Country-led Example Using Recommendations
 overall_country_led_using_recs <- summary_table %>%
   filter(g_conled == 1 & PRO09 == 1) %>%
   summarise(across(all_of(numeric_cols), sum, na.rm = TRUE)) %>%
   mutate(`Example Lead/Placement` = "Graph Data", `Use of Recommendations` = "Overall Country-led Example Using Recommendations")
 
-# Overall Country-led Example
+# Overall Country-led Example (Now including NA values in PRO09)
 overall_country_led <- summary_table %>%
-  filter(g_conled == 1 & PRO09 %in% c(1, 2, 8)) %>%
+  filter(g_conled == 1 & (PRO09 %in% c(1, 2, 8) | is.na(PRO09))) %>%  # Include NA
   summarise(across(all_of(numeric_cols), sum, na.rm = TRUE)) %>%
   mutate(`Example Lead/Placement` = "Graph Data", `Use of Recommendations` = "Overall Country-led Example")
 
-# Overall Institution Example
+# Overall Institution Example (Including NA values in PRO09)
 overall_institution_example <- summary_table %>%
-  filter(g_conled %in% c(2, 3)) %>%
+  filter(g_conled %in% c(2, 3) & (PRO09 %in% c(1, 2, 8) | is.na(PRO09))) %>%  # Include NA
   summarise(across(all_of(numeric_cols), sum, na.rm = TRUE)) %>%
   mutate(`Example Lead/Placement` = "Graph Data", `Use of Recommendations` = "Overall Institution Example")
 
@@ -859,13 +852,12 @@ institution_example_using_recs <- summary_table %>%
   mutate(`Example Lead/Placement` = "Graph Data", `Use of Recommendations` = "Institution Example Using Recommendations")
 
 # Combine Graph Data Into a Separate Table
-
 graph_data_table <- bind_rows(
   overall_country_led_using_recs,
   overall_country_led,
   overall_institution_example,
   institution_example_using_recs
-) 
+)
 
 # Ensure "Graph Data" only appears once
 graph_data_table$`Example Lead/Placement` <- ifelse(duplicated(graph_data_table$`Example Lead/Placement`), "", graph_data_table$`Example Lead/Placement`)
@@ -873,6 +865,7 @@ graph_data_table$`Example Lead/Placement` <- ifelse(duplicated(graph_data_table$
 # Reorder columns to keep "Example Lead/Placement" and "Use of Recommendations" first
 graph_data_table <- graph_data_table %>%
   select(`Example Lead/Placement`, `Use of Recommendations`, everything())
+
 
 summary_table <- summary_table %>%
   select(`Example Lead/Placement`, `Use of Recommendations`, everything())
@@ -905,9 +898,9 @@ figure6_no_header <- flextable(summary_table) %>%
 # Merge Graph Data Table and Summary Table
 
 merged_df <- rbind(graph_data_table, summary_table)
-# ======================================================
+
 # Summary of Country-Led Examples (Figure 6)
-# ======================================================
+
 
 # Ensure Both Tables Have the Same Columns Before Merging
 all_columns <- union(colnames(graph_data_table), colnames(summary_table))
@@ -1058,15 +1051,13 @@ figure7 <- flextable(recuse_table) %>%
 
 # Display Merged Table
 figure7
-
 # ======================================================
-# Figure 8 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
+# Figure 7 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
 # ======================================================
-                        
-# Step 1: Prepare the data
-aggregated_data <- group_roster %>%
-  filter(g_conled == 1) %>%  # Filter for g_conled == 1
-  mutate(across(starts_with("PRO08."), as.integer)) %>%  # Convert all PRO08.* columns to integer
+# Step 1: Prepare the data for National Examples (g_conled == 1)
+aggregated_national <- group_roster %>%
+  filter(g_conled == 1) %>%  
+  mutate(across(starts_with("PRO08."), as.integer)) %>%  
   pivot_longer(
     cols = starts_with("PRO08."),
     names_to = "Source_Variable",
@@ -1082,83 +1073,297 @@ aggregated_data <- group_roster %>%
       grepl("PRO08.E|PRO08.F|PRO08.G|PRO08.H|PRO08.X", Source_Variable) ~ "Other",
       TRUE ~ "Unknown"
     ),
-    Recommendation_Status = case_when(
+    `Use of Recommendations` = case_when(
       PRO09 == 1 ~ "Using Recommendations",
-      PRO09 %in% c(2, 8) ~ "Not Used Recommendations and Other",
-      TRUE ~ "Not Used Recommendations and Other"
+      PRO09 %in% c(2, 8) ~ "Not Using Recommendations and Other",
+      TRUE ~ "Not Using Recommendations and Other"
     )
   ) %>% 
-  group_by(Recommendation_Status, Source, ryear) %>% 
+  group_by(`Use of Recommendations`, Source, ryear) %>% 
   summarise(Count = n(), .groups = "drop") %>% 
   pivot_wider(
     names_from = ryear,
     values_from = Count,
     values_fill = 0
-  )
-# Step 2: Add Total Column
-aggregated_data <- aggregated_data %>%
-  mutate(
-    Total = rowSums(select(., `2021`, `2022`, `2023`, `2024`), na.rm = TRUE)  # Correctly calculate the total
-  )
+  ) %>%
+  mutate(Total = rowSums(select(., `2021`, `2022`, `2023`, `2024`), na.rm = TRUE)) %>%
+  mutate(`Example Category` = "Graph Data National Examples")  
 
-# Step 3: Order rows and columns
-aggregated_data <- aggregated_data %>%
+# Step 2: Prepare the data for Institutional Examples (g_conled == 2 or g_conled == 3)
+aggregated_institutional <- group_roster %>%
+  filter(g_conled %in% c(2, 3)) %>%  
+  mutate(across(starts_with("PRO08."), as.integer)) %>%  
+  pivot_longer(
+    cols = starts_with("PRO08."),
+    names_to = "Source_Variable",
+    values_to = "Value"
+  ) %>% 
+  filter(Value == 1) %>% 
   mutate(
-    Recommendation_Status = factor(
-      Recommendation_Status,
-      levels = c("Using Recommendations", "Not Used Recommendations and Other")
+    Source = case_when(
+      grepl("PRO08.A", Source_Variable) ~ "Survey",
+      grepl("PRO08.B", Source_Variable) ~ "Administrative Data",
+      grepl("PRO08.C", Source_Variable) ~ "Census",
+      grepl("PRO08.D", Source_Variable) ~ "Data Integration",
+      grepl("PRO08.E|PRO08.F|PRO08.G|PRO08.H|PRO08.X", Source_Variable) ~ "Other",
+      TRUE ~ "Unknown"
+    ),
+    `Use of Recommendations` = case_when(
+      PRO09 == 1 ~ "Using Recommendations",
+      PRO09 %in% c(2, 8) ~ "Not Using Recommendations and Other",
+      TRUE ~ "Not Using Recommendations and Other"
+    )
+  ) %>% 
+  group_by(`Use of Recommendations`, Source, ryear) %>% 
+  summarise(Count = n(), .groups = "drop") %>% 
+  pivot_wider(
+    names_from = ryear,
+    values_from = Count,
+    values_fill = 0
+  ) %>%
+  mutate(Total = rowSums(select(., `2021`, `2022`, `2023`, `2024`), na.rm = TRUE)) %>%
+  mutate(`Example Category` = "Overall Institution Examples")  
+
+# Step 3: Combine both datasets
+aggregated_data <- bind_rows(aggregated_national, aggregated_institutional) %>%
+  mutate(
+    `Use of Recommendations` = factor(
+      `Use of Recommendations`,
+      levels = c("Using Recommendations", "Not Using Recommendations and Other")
     )
   ) %>%
-  select(Recommendation_Status, Source, `2021`, `2022`, `2023`, `2024`, Total) %>%  # Ensure correct column order
-  arrange(Recommendation_Status, factor(Source, levels = c("Survey", "Census", "Administrative Data", "Data Integration", "Other")))
+  select(`Example Category`, `Use of Recommendations`, Source, `2021`, `2022`, `2023`, `2024`, Total) %>%
+  arrange(
+    `Example Category`,
+    `Use of Recommendations`,
+    factor(Source, levels = c("Survey", "Census", "Administrative Data", "Data Integration", "Other"))
+  )
+# Define borders
+solid_border <- fp_border(color = "#3b71b3", width = 2, style = "solid")  # For "Using Recommendations" (Graph Data)
+dashed_border <- fp_border(color = "#3b71b3", width = 2, style = "dashed")  # For "Not Using Recommendations and Other" (Graph Data)
+default_border <- fp_border(color = "black", width = 0.5)  # Default border for "Overall Institution Examples"
 
 # Step 4: Beautify and create FlexTable for Word
 figure8_flextable <- flextable(aggregated_data) %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
-  merge_v(j = ~ Recommendation_Status) %>%  # Merge vertical cells for Recommendation_Status
-  bg(bg = "#f4cccc", j = ~ `2024`) %>%   # Highlight the 2024 column
-  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
+  merge_v(j = ~ `Example Category`) %>%  
+  merge_v(j = ~ `Use of Recommendations`) %>%  
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%   
+  bg(bg = "#c9daf8", j = ~ Total) %>%   
   border_outer(border = fp_border(color = "black", width = 2)) %>%
   border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
-  autofit() %>%
-  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
-  set_caption(caption = "Figure 8: Breakdown by Year, Use of Recommendations, and Source")
+  fontsize(size = 8) %>%  
+  autofit() %>%  
+  # Apply colored borders only for "Graph Data National Examples"
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Using Recommendations"), border.top = solid_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Using Recommendations"), border.bottom = solid_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), border.top = dashed_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), border.bottom = dashed_border) %>%
+  # Reset to default borders for "Overall Institution Examples"
+  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), border.top = default_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), border.bottom = default_border) %>%
+  add_footer_row(
+    values = paste0(
+      "Graph Data National Examples are based on the implementation of statistical frameworks (IRRS, IRIS, IROSS) in 2024. ",
+      "Nationally and institutionally led examples are categorized by the type of data source used. ",
+      "• Survey: Data collected through sample surveys. ",
+      "• Census: Information obtained through national population censuses. ",
+      "• Administrative Data: Official government records and databases. ",
+      "• Data Integration: Combination of multiple sources. ",
+      "• Other: Sum of responses to PRO08.F, PRO08.G, PRO08.H, and PRO08.X. ",
+      "  This is a multiple-response question, meaning one example can feature multiple sources or tools."
+    ),
+    colwidths = ncol(aggregated_data)  
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%  
+  set_caption("Figure 7: Overview Data Sources and Tools for Country-led Examples 2024")
+
+figure8_flextable
 
 # ======================================================
-# Regional Analysis (Text 1)
+# Figure 6: Implementation of the Recommendations by Region
 # ======================================================
-                        
-regional_data <- group_roster %>%
+
+# Step 1: Extract Country-led Examples Using Recommendations
+regional_data_using_recs <- group_roster %>%
   filter(PRO09 == 1, g_conled == 1) %>%
   group_by(region, ryear) %>%
   summarise(count = n(), .groups = "drop") %>%
-  pivot_wider(names_from = ryear, values_from = count, values_fill = 0)
+  pivot_wider(names_from = ryear, values_from = count, values_fill = 0) %>%
+  mutate(`Example Category` = "Graph Data: Country-led Example Using Recommendations")
 
-text1 <- create_flextable(regional_data, "Text 1: Regional Summary of Country-Led Projects")
-# Create world map plot for the year 2024
-world <- ne_countries(scale = "medium", returnclass = "sf")
+# Step 2: Extract Overall Country-led Examples (Including those without use of recommendations)
+regional_data_overall <- group_roster %>%
+  filter(g_conled == 1) %>%
+  group_by(region, ryear) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = count, values_fill = 0) %>%
+  mutate(`Example Category` = "Overall Country-led Example")
 
-# Filter data for 2024
-year_data <- group_roster %>%
+# Step 3: Combine both datasets
+regional_data_combined <- bind_rows(regional_data_using_recs, regional_data_overall) %>%
+  rename(Region = region) %>%
+  select(`Example Category`, Region, everything())  # Ensure correct column order
+
+# Define border styles
+highlight_border <- fp_border(color = "#3b71b3", width = 1.5)  # Blue for Graph Data section
+default_border <- fp_border(color = "black", width = 1)  # Default black border for Overall section
+header_color <- "#4cc3c9"  # Primary color for header row
+
+# Step 4: Create FlexTable and retain the name as "text1"
+text1 <- flextable(regional_data_combined) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  fontsize(size = 10, part = "body") %>%  # Set font size 10 for body text
+  merge_v(j = ~ `Example Category`) %>%  # Merge vertical cells for "Example Category"
+  autofit() %>%
+  bg(part = "header", bg = header_color) %>%  # Apply primary color to header
+  color(part = "header", color = "white") %>%  # Ensure header text is readable
+  # Apply blue border styling for "Graph Data: Country-led Example Using Recommendations"
+  border(i = which(regional_data_combined$`Example Category` == "Graph Data: Country-led Example Using Recommendations"), 
+         border.top = highlight_border, 
+         border.bottom = highlight_border, 
+         border.left = highlight_border, 
+         border.right = highlight_border) %>%
+  # Apply black border styling for "Overall Country-led Example"
+  border(i = which(regional_data_combined$`Example Category` == "Overall Country-led Example"), 
+         border.top = default_border, 
+         border.bottom = default_border, 
+         border.left = default_border, 
+         border.right = default_border) %>%
+  add_footer_row(
+    values = paste0(
+      "Graph Data: Country-led Example Using Recommendations refers to country-led projects that explicitly use EGRISS recommendations. ",
+      "This section highlights the regional distribution of cases where national statistical offices or institutions reported following EGRISS guidance. ",
+      "The data is collected based on responses to PRO09, indicating direct implementation of statistical recommendations in forced displacement data collection efforts."
+    ),
+    colwidths = ncol(regional_data_combined)  # Ensure footer spans full table width
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%  
+  set_caption("Figure 6: Implementation of the Recommendations by Region")
+
+# Display the table
+text1
+
+# Load required libraries
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(magick)
+library(gridExtra)
+library(grid)
+
+# ======================================================
+# Map Additional to GAIN 1: Prepare World Map (Remove Arctic & Antarctica)
+# ======================================================
+
+# Remove Antarctica from the world dataset
+world_filtered <- world %>%
+  filter(!grepl("Antarctica", name))  # Exclude Antarctica
+
+
+# Step 2: Create and Save the First Map (Overall Country-led Example)
+
+
+# Filter data for all country-led examples in 2024
+year_data_all <- group_roster %>%
   filter(ryear == 2024, g_conled == 1) %>%
   group_by(mcountry) %>%
   summarise(Count = n(), .groups = "drop")
 
-# Merge with world map data
-year_data <- left_join(year_data, world, by = c("mcountry" = "name")) %>%
+# Merge with filtered world map data
+year_data_all <- left_join(year_data_all, world_filtered, by = c("mcountry" = "name")) %>%
   filter(!is.na(geometry))  # Ensure geometries are valid
 
-total_examples <- sum(year_data$Count, na.rm = TRUE)
+total_examples_all <- sum(year_data_all$Count, na.rm = TRUE)
 
-# Create the map
-map_plot <- ggplot() +
-  geom_sf(data = world, fill = "gray90", color = "white") +
-  geom_sf(data = year_data, aes(geometry = geometry, fill = Count), color = primary_color, alpha = 0.7, show.legend = FALSE) +
-  scale_fill_continuous(low = "#e0f3db", high = "#43a2ca") +
-  geom_text(data = year_data, aes(label = Count, geometry = geometry), stat = "sf_coordinates", size = 3, color = "black") +
-  labs(title = paste("Examples in 2024 (Total:", total_examples, ")")) +
-  theme_minimal()
+# Create the first map (Overall Country-led Example)
+map_all <- ggplot() +
+  geom_sf(data = world_filtered, fill = "gray90", color = "white") +
+  geom_sf(data = year_data_all, aes(geometry = geometry, fill = Count), color = "#00689D", alpha = 0.8) +
+  scale_fill_gradient(low = "#BFDDF7", high = "#00689D") +  # EGRISS color scheme
+  geom_text(data = year_data_all, aes(label = Count, geometry = geometry), stat = "sf_coordinates", size = 3, color = "black") +
+  labs(title = paste("Overall Country-led Example (Total:", total_examples_all, ")")) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank(), 
+    axis.text = element_blank(),  # Remove degree labels
+    axis.ticks = element_blank(),  # Remove axis ticks
+    legend.position = "none",  # Remove legend
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank()   # Remove minor grid lines
+  ) +
+  coord_sf(ylim = c(-60, 80), expand = FALSE)  # Remove Arctic & Antarctica, maximize map size
+
+# Save the first map as an image
+map_all_image_path <- "map_all.png"
+ggsave(map_all_image_path, map_all, width = 8, height = 6, dpi = 300)
+
+
+# Step 3: Create and Save the Second Map (Overall Country-led Example Using Recommendations)
+
+
+# Filter data for country-led examples where recommendations are used (PRO09 = 1)
+year_data_recs <- group_roster %>%
+  filter(ryear == 2024, g_conled == 1, PRO09 == 1) %>%
+  group_by(mcountry) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Merge with filtered world map data
+year_data_recs <- left_join(year_data_recs, world_filtered, by = c("mcountry" = "name")) %>%
+  filter(!is.na(geometry))  # Ensure geometries are valid
+
+total_examples_recs <- sum(year_data_recs$Count, na.rm = TRUE)
+
+# Create the second map (Overall Country-led Example Using Recommendations)
+map_recs <- ggplot() +
+  geom_sf(data = world_filtered, fill = "gray90", color = "white") +
+  geom_sf(data = year_data_recs, aes(geometry = geometry, fill = Count), color = "#4CC3C9", alpha = 0.8) +
+  scale_fill_gradient(low = "#D4F0F2", high = "#4CC3C9") +  # EGRISS color scheme
+  geom_text(data = year_data_recs, aes(label = Count, geometry = geometry), stat = "sf_coordinates", size = 3, color = "black") +
+  labs(title = paste("Overall Country-led Example Using Recommendations (Total:", total_examples_recs, ")")) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(), 
+    axis.title.y = element_blank(), 
+    axis.text = element_blank(),  # Remove degree labels
+    axis.ticks = element_blank(),  # Remove axis ticks
+    legend.position = "none",  # Remove legend
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank()   # Remove minor grid lines
+  ) +
+  coord_sf(ylim = c(-60, 80), expand = FALSE)  # Remove Arctic & Antarctica, maximize map size
+
+# Save the second map as an image
+map_recs_image_path <- "map_recs.png"
+ggsave(map_recs_image_path, map_recs, width = 8, height = 6, dpi = 300)
+
+
+# Step 4: Combine Both Maps into a Single Image (One Below the Other)
+
+
+# Load both images
+map_all_img <- image_read(map_all_image_path)
+map_recs_img <- image_read(map_recs_image_path)
+
+# Combine them one below the other (stacked)
+combined_maps <- image_append(c(map_all_img, map_recs_img), stack = TRUE)
+
+# Save the final combined image
+final_combined_maps_path <- "final_combined_maps.png"
+image_write(combined_maps, path = final_combined_maps_path, format = "png")
+
+
+# Step 5: Display the Final Combined Image in R
+
+
+# Display the final combined maps in R
+grid.raster(combined_maps)
+
+# Print success message
+cat("Final combined maps saved as:", final_combined_maps_path, "\n")
 
 # ======================================================
 # Challenges Reported (Figure 9) - Transposed and with Labels
@@ -1526,20 +1731,17 @@ partnership_flextable
 # Add to Word document
 # ======================================================
 
-# Load the existing Word document
-word_doc <- read_docx()
-
 # Add structured content to Word
 word_doc <- word_doc %>%
   body_add_par("GAIN 2024 Annual Report", style = "heading 1") %>%
-  body_add_flextable(figure6) %>%  
+  body_add_flextable(figure6) %>%
   body_add_break() %>%
   body_add_flextable(figure7) %>%
   body_add_break() %>%
   body_add_par("Figure 8: Breakdown by Year, Use of Recommendations, and Source", style = "heading 2") %>%
-  body_add_flextable(figure8_flextable) %>%  
+  body_add_flextable(figure8_flextable) %>%
   body_add_break() %>%
-  body_add_flextable(text1) %>%  
+  body_add_flextable(text1) %>%
   body_add_break() %>%
   
   # **Updated Section with Merged Table**
@@ -1548,23 +1750,28 @@ word_doc <- word_doc %>%
   body_add_break() %>%
   
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
-  body_add_flextable(unique_country_flextable) %>%  
+  body_add_flextable(unique_country_flextable) %>%
   body_add_break() %>%
+  
+  # **Insert the Map Image Properly**
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
-  body_add_gg(map_plot, width = 8, height = 6.4) %>%
+  body_add_img(src = "final_combined_maps.png", width = 8, height = 6.4) %>%  # **Use body_add_img() for image**
+  
   body_end_section_landscape() %>%
   body_add_break() %>%
+  
   body_add_flextable(figure9) %>%
   body_add_break() %>%
   body_add_par("Institutional Implementation Breakdown", style = "heading 2") %>%
-  body_add_flextable(institutional_flextable) %>%  
+  body_add_flextable(institutional_flextable) %>%
   body_add_break() %>%
   body_add_par("Future Projects Breakdown by Source for 2024", style = "heading 2") %>%
-  body_add_flextable(source_summary_flextable) %>%  
+  body_add_flextable(source_summary_flextable) %>%
   body_add_break() %>%
   body_add_par("Breakdown of Nationally Led Partnerships by Year and Type", style = "heading 2") %>%
-  body_add_flextable(partnership_flextable) %>%  
+  body_add_flextable(partnership_flextable) %>%
   body_add_break()
+
 
 # ======================================================
 # Save the Word Document
