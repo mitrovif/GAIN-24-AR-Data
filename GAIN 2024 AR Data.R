@@ -23,10 +23,10 @@ library(ggrepel)
 # Set Working Directory Dynamically
 # ======================================================
 # Copy-Paste your Windows file path (with backslashes)
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-11_11-03-14"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-12_10-04-14"
 
 # Paste your copied Windows file path here
-working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-11_11-03-14"
+working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-12_10-04-14"
 
 
 # Automatically replace backslashes (\) with forward slashes (/)
@@ -957,15 +957,14 @@ figure6
 # ======================================================
 # Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5)
 # ======================================================
-
+group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
+group_roster <- read.csv(group_roster_file)
 # Define Colors (with transparency for better readability)
 iris_color <- "#072D62AA"        # Dark Blue (IRIS)
 irrs_color <- "#14234CAA"        # Navy Blue (IRRS)
 iross_color <- "#3B71B9AA"       # Medium Blue (IROSS)
 undetermined_color <- "#7F7F7FAA" # Grey (Undetermined)
 mixed_color <- "#D9D9D9AA"        # Light Grey (Mixed)
-
-# Convert relevant columns to numeric
 group_roster <- group_roster %>%
   mutate(
     PRO10.A = as.numeric(gsub("[^0-9]", "", PRO10.A)),
@@ -974,14 +973,16 @@ group_roster <- group_roster %>%
     PRO10.Z = as.numeric(gsub("[^0-9]", "", PRO10.Z)),
     PRO09 = as.numeric(gsub("[^0-9]", "", PRO09)),
     g_recuse = case_when(
-      PRO10.A == 1 & PRO10.B != 1 & PRO10.C != 1 ~ "IRRS",
-      PRO10.A != 1 & PRO10.B == 1 & PRO10.C != 1 ~ "IRIS",
-      PRO10.A != 1 & PRO10.B != 1 & PRO10.C == 1 ~ "IROSS",
-      (PRO10.A + PRO10.B + PRO10.C) > 1 ~ "Mixed",
-      PRO10.Z == 1 ~ "Undetermined",
-      TRUE ~ "Undetermined"
+      PRO09 == 1 & PRO10.A == 1 & (is.na(PRO10.B) | PRO10.B != 1) &
+        (is.na(PRO10.C) | PRO10.C != 1) ~ "IRRS",
+      PRO09 == 1 & PRO10.A != 1 & PRO10.B == 1 & PRO10.C != 1 ~ "IRIS",
+      PRO09 == 1 & PRO10.A != 1 & PRO10.B != 1 & PRO10.C == 1 ~ "IROSS",
+      PRO09 == 1 & rowSums(cbind(PRO10.A, PRO10.B, PRO10.C), na.rm = TRUE) > 1 ~ "Mixed",
+      PRO09 == 1 & PRO10.Z == 1 ~ "Undetermined",
+      PRO09 == 1 & PRO10.A != 1 & PRO10.B != 1 & PRO10.C != 1 & PRO10.Z != 1 ~ "Undetermined",
+      TRUE ~ "Undetermined"  # Changed NA entries to "Undetermined"
     )
-  ) 
+  )
 
 # Aggregate Use of Recommendations (Figure 5)
 recuse_table <- group_roster %>%
