@@ -28,14 +28,11 @@ working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - I
 # Paste your copied Windows file path here
 working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-12_10-04-14"
 
-
 # Automatically replace backslashes (\) with forward slashes (/)
 working_dir <- gsub("\\\\", "/", working_dir)
 
-
 # Set working directory
 setwd(working_dir)
-
 
 # Confirm the working directory
 message("Working directory set to: ", getwd())
@@ -104,6 +101,7 @@ colnames(summary_table) <- c(
 
 # Export to the specified folder with the updated name and sheet title
 output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
+
 # Save the table with the renamed sheet using writexl
 write_xlsx(list(`Figure 6` = summary_table), path = output_excel_file)
 
@@ -901,7 +899,6 @@ merged_df <- rbind(graph_data_table, summary_table)
 
 # Summary of Country-Led Examples (Figure 6)
 
-
 # Ensure Both Tables Have the Same Columns Before Merging
 all_columns <- union(colnames(graph_data_table), colnames(summary_table))
 
@@ -959,6 +956,7 @@ figure6
                         
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
+                        
 # Define Colors (with transparency for better readability)
 iris_color <- "#072D62AA"        # Dark Blue (IRIS)
 irrs_color <- "#14234CAA"        # Navy Blue (IRRS)
@@ -1206,10 +1204,12 @@ aggregated_data <- bind_rows(aggregated_national, aggregated_institutional) %>%
     `Use of Recommendations`,
     factor(Source, levels = c("Survey", "Census", "Administrative Data", "Data Integration", "Other"))
   )
+                        
 # Define borders
 solid_border <- fp_border(color = "#3b71b3", width = 2, style = "solid")  # For "Using Recommendations" (Graph Data)
 dashed_border <- fp_border(color = "#3b71b3", width = 2, style = "dashed")  # For "Not Using Recommendations and Other" (Graph Data)
 default_border <- fp_border(color = "black", width = 0.5)  # Default border for "Overall Institution Examples"
+                        
 # Step 4: Beautify and create FlexTable for Word
 figure8_flextable <- flextable(aggregated_data) %>%
   theme_booktabs() %>%
@@ -1336,9 +1336,7 @@ library(grid)
 world_filtered <- world %>%
   filter(!grepl("Antarctica", name))  # Exclude Antarctica
 
-
 # Step 2: Create and Save the First Map (Overall Country-led Example)
-
 
 # Filter data for all country-led examples in 2024
 year_data_all <- group_roster %>%
@@ -1375,9 +1373,7 @@ map_all <- ggplot() +
 map_all_image_path <- "map_all.png"
 ggsave(map_all_image_path, map_all, width = 8, height = 6, dpi = 300)
 
-
 # Step 3: Create and Save the Second Map (Overall Country-led Example Using Recommendations)
-
 
 # Filter data for country-led examples where recommendations are used (PRO09 = 1)
 year_data_recs <- group_roster %>%
@@ -1414,9 +1410,7 @@ map_recs <- ggplot() +
 map_recs_image_path <- "map_recs.png"
 ggsave(map_recs_image_path, map_recs, width = 8, height = 6, dpi = 300)
 
-
 # Step 4: Combine Both Maps into a Single Image (One Below the Other)
-
 
 # Load both images
 map_all_img <- image_read(map_all_image_path)
@@ -1429,9 +1423,7 @@ combined_maps <- image_append(c(map_all_img, map_recs_img), stack = TRUE)
 final_combined_maps_path <- "final_combined_maps.png"
 image_write(combined_maps, path = final_combined_maps_path, format = "png")
 
-
 # Step 5: Display the Final Combined Image in R
-
 
 # Display the final combined maps in R
 grid.raster(combined_maps)
@@ -1839,6 +1831,7 @@ unique_country_flextable
 
 # List of Countries by Region
 country_list_flextable <- flextable(list_countries_by_region(group_roster)) %>%
+  delete_columns(j = "ryear") %>%
   set_table_properties(width = 0.5, layout = "autofit") %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
@@ -1846,10 +1839,12 @@ country_list_flextable <- flextable(list_countries_by_region(group_roster)) %>%
   color(part = "header", color = "black") %>%
   border_outer(border = fp_border(color = "black", width = 2)) %>%
   border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
-  add_footer_row(values = "Footnote: This table presents the list of countries for each region based on metadata information.", colwidths = ncol(list_countries_by_region(group_roster))) %>%
+  
+  # Add footer row with the footnote text (after deleting the column)
+  add_footer_row(values = "Footnote: This table presents the list of countries for each region based on metadata information.",
+                 colwidths = ncol(list_countries_by_region(group_roster)) - 1) %>%  # Adjust colwidths due to the column deletion
+  
   set_caption("List of Countries by Region")
-
-country_list_flextable <- delete_columns(country_list_flextable, j = "ryear")
 
 # Display Second Table
 country_list_flextable
@@ -1940,8 +1935,7 @@ merged_flextable <- flextable(merged_table) %>%
   bg(part = "header", bg = "#003366") %>%  # Dark blue EGRISS header
   bold(part = "header") %>%
   bg(i = seq(1, nrow(merged_table), 2), bg = "#DDEEFF")  # Light blue alternating rows
-
-                        
+            
 # ======================================================
 # Breakdown of Nationally Led Partnerships
 # ======================================================
@@ -2130,6 +2124,7 @@ print(grf_flextable)
 # ======================================================
 # Add to Word document
 # ======================================================
+                        
 library(officer)
 
 # Initialize a fresh document
