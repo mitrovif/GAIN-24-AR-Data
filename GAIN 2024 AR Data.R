@@ -2143,31 +2143,36 @@ word_doc <- word_doc %>%
   body_add_flextable(figure7) %>%
   body_add_break() %>%
   body_add_flextable(final_flextable) %>%
-  body_add_break() %>%
+  
+  # Switch to landscape mode before Figure 8
+  body_end_section_portrait() %>%
   body_add_par("Figure 8: Breakdown by Year, Use of Recommendations, and Source", style = "heading 2") %>%
   body_add_flextable(figure8_flextable) %>%
   body_add_break() %>%
+  
+  # Switch back to portrait mode after Figure 8
+  body_end_section_landscape() %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
   
-  # **Updated Section with Merged Table**
+  # Updated Section with Merged Table (Portrait Mode)
   body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
   body_add_flextable(merged_flextable) %>%
   body_add_break() %>%
-  
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%
-  body_add_break() %>%
-  body_add_flextable(country_list_flextable) %>%
-  body_add_break() %>%
   
-  # **Insert the Map Image in Portrait Mode with A4-friendly size**
+  # Switch to landscape mode for the country list (Landscape Mode)
   body_end_section_portrait() %>%
+  body_add_flextable(country_list_flextable) %>%
+  
+  # Switch back to portrait mode for the Map Image (Portrait Mode)
+  body_end_section_landscape() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
   body_add_img(src = "final_combined_maps.png", width = 5.5, height = 7.5) %>%
   body_add_break() %>%
   
-  # **Resume Portrait Content**
+  # Resume in portrait mode with tables (Portrait Mode)
   body_add_flextable(figure9) %>%
   body_add_break() %>%
   body_add_par("Institutional Implementation Breakdown", style = "heading 2") %>%
@@ -2181,13 +2186,11 @@ word_doc <- word_doc %>%
   body_add_par("Breakdown of Nationally Led Partnerships by Year and Type", style = "heading 2") %>%
   body_add_flextable(partnership_flextable) %>%
   body_add_break() %>%
-  
-  # **GFR Table in Landscape at the End**
-  body_end_section_landscape() %>%
   body_add_par("Summary Table: GFR Data on Pledges", style = "heading 2") %>%
   body_add_flextable(grf_flextable) %>%
-  body_end_section_continuous() %>%  # Corrected function for returning to Portrait Orientation
-  body_add_break()
+  
+  # Finish the document with continuous section (portrait by default)
+  body_end_section_continuous()
 
 # ======================================================
 # Save the Word Document
