@@ -825,6 +825,8 @@ summary_table <- summary_table %>%
 
 summary_table$`Example Lead/Placement` <- ifelse(duplicated(summary_table$`Example Lead/Placement`), "", summary_table$`Example Lead/Placement`)
 
+numeric_cols <- summary_table %>%  select(where(is.numeric)) %>%names()
+                        
 # Overall Country-led Example Using Recommendations
 overall_country_led_using_recs <- summary_table %>%
   filter(g_conled == 1 & PRO09 == 1) %>%
@@ -1855,17 +1857,18 @@ country_list_flextable
 
 # Step 1: Load the dataset
 file_path <- file.path(working_dir, "analysis_ready_repeat_PRO11_PRO12.csv")
-repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)  # Ensure recommendation is treated as text
+repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)  
 
 # Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
   rename(recommendation = X_recommendation) %>%
-  mutate(recommendation = as.character(recommendation))  # Ensure it's a text variable
+  mutate(recommendation = na_if(trimws(as.character(recommendation)), ""))
+
 
 # ✅ Convert all PRO12 columns to numeric before pivoting
-pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)  # Starts from PRO12A, excludes PRO12
+pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)
 repeat_data <- repeat_data %>%
-  mutate(across(all_of(pro12_columns), ~ as.numeric(.)))  # Convert PRO12 columns to numeric
+  mutate(across(all_of(pro12_columns), ~ as.numeric(.)))
 
 # Step 3: Convert to long format, classify categories, and aggregate
 processed_data <- repeat_data %>%
@@ -1875,10 +1878,8 @@ processed_data <- repeat_data %>%
     values_to = "Value"
   ) %>%
   
-  # Filter where Value is 1
   filter(Value == 1) %>%
   
-  # Classify PRO12 categories
   mutate(
     Category = case_when(
       Category_Variable == "PRO12A" ~ "Statistical framework/population group",
@@ -1895,13 +1896,9 @@ processed_data <- repeat_data %>%
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category))  # Remove rows with missing categories
+  filter(!is.na(Category))  
 
-# ======================================================
-# Merge Nationally Led and Institutionally Led Tables
-# ======================================================
-
-# Function to summarize counts by Category and Recommendation
+# Summarize Counts by Category and Recommendation
 summarize_table <- function(data, g_conled_value) {
   data %>%
     filter(g_conled == g_conled_value) %>%
@@ -1913,15 +1910,22 @@ summarize_table <- function(data, g_conled_value) {
 nationally_led_data <- summarize_table(processed_data, 1)
 institutionally_led_data <- summarize_table(processed_data, 2)
 
-# Merge them side by side
+# EGRISS Color Scheme
+primary_color <- "#4cc3c9"
+secondary_color <- "#3b71b3"
+accent_color <- "#072d62"
+highlight_red <- "#D73027"  # Correct EGRISS red for highlighting
+background_color <- "#f0f8ff"
+# Step 4: Merge Nationally and Institutionally Led Data
 merged_table <- nationally_led_data %>%
-  left_join(institutionally_led_data, by = "Category", suffix = c("_National", "_Institutional"))
+  full_join(institutionally_led_data, by = "Category", suffix = c("_National", "_Institutional"))
 
-# Convert to flextable with an extra merged row for headers
+# Create FlexTable with Enhanced Formatting
 merged_flextable <- flextable(merged_table) %>%
-  add_header_row(values = c("", "Nationally Led", "Institutionally Led"), colwidths = c(1, 3, 3)) %>%
+  add_header_row(values = c("", "Nationally Led Examples", "Institutionally Led Examples"), 
+                 colwidths = c(1, 3, 3)) %>%
   set_header_labels(
-    Category = "Category",
+    Category = "Elements of International Recommendations Used",
     IRRS_National = "IRRS",
     IRIS_National = "IRIS",
     IROSS_National = "IROSS",
@@ -1929,12 +1933,43 @@ merged_flextable <- flextable(merged_table) %>%
     IRIS_Institutional = "IRIS",
     IROSS_Institutional = "IROSS"
   ) %>%
-  autofit() %>%
-  theme_vanilla() %>%  # Base theme
-  color(part = "header", color = "white") %>%
-  bg(part = "header", bg = "#003366") %>%  # Dark blue EGRISS header
-  bold(part = "header") %>%
-  bg(i = seq(1, nrow(merged_table), 2), bg = "#DDEEFF")  # Light blue alternating rows
+  
+  # Default Outer Border for Entire Table
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  
+  # Light Blue Header (First Two Rows)
+  bg(i = 1:2, part = "header", bg = primary_color) %>%
+  color(i = 1:2, part = "header", color = "black") %>%
+  bold(i = 1:2, part = "header") %>%
+  
+  # Red Outer Border for "Statistical framework/population group"
+  border(i = which(merged_table$Category == "Statistical framework/population group"),
+         border.top = fp_border(color = highlight_red, width = 2),
+         border.bottom = fp_border(color = highlight_red, width = 2),
+         border.left = fp_border(color = "transparent", width = 0),
+         border.right = fp_border(color = "transparent", width = 0)) %>%
+  
+  # AutoFit for Optimal Sizing
+  set_table_properties(width = 0.5, layout = "autofit") %>%
+  
+  # Improved User-Friendly Footnote
+  add_footer_row(
+    values = paste0(
+      "Footnote: This table shows which components of EGRISS recommendations are most frequently used. ",
+      "Each row represents an 'Element of International Recommendations' applied in data collection. ",
+      "The highlighted row with a **red border** marks the foundational element: 'Statistical framework/population group'. ",
+      "Columns show counts for data collected through Nationally Led Examples and Institutionally Led Examples. ",
+      "Values are based on reported implementation under PRO11/PRO12 variables."
+    ),
+    colwidths = ncol(merged_table)
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%
+  
+  # Updated Caption
+  set_caption("Figure XX (text in AR): Components of EGRISS Recommendations Most Frequently Used")
+
+# Display the Final Table
+print(merged_flextable)
             
 # ======================================================
 # Breakdown of Nationally Led Partnerships
@@ -2013,6 +2048,117 @@ partnership_flextable <- flextable(partnership_data) %>%
 
 # Display Table in RStudio Viewer (for verification)
 partnership_flextable
+
+# ======================================================
+# Partnerships and Organization Mentions in R with FlexTable
+# ======================================================
+
+library(dplyr)
+library(tidyr)
+library(flextable)
+library(stringr)
+
+# Load dataset
+file_path <- "analysis_ready_group_roster.csv"
+group_roster <- read.csv(file_path)
+
+# Step 1: Partnerships Table (based on PRO18)
+partnership_summary <- group_roster %>%
+  group_by(ryear, PRO18) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = ryear, values_from = Count, values_fill = 0) %>%
+  mutate(Total = rowSums(across(where(is.numeric))))
+
+# Load necessary libraries
+library(dplyr)
+library(stringr)
+
+# List of terms to sum
+terms_to_count <- c("UNHCR", "IOM", "JDC", "UNFPA", "World Bank")
+
+# Function to sum the year values for each term in PRO18 using regex
+sum_mentions <- function(term) {
+  # Define the regex pattern to match the term, considering different punctuations and spaces around it
+  regex_term <- paste0("\\b", term, "\\b")  # Match the exact term as a word (boundary)
+  
+  # Sum the year values for rows that match the term in PRO18, excluding NA values in PRO18
+  partnership_summary %>%
+    filter(!is.na(PRO18)) %>%  # Exclude rows with NA in PRO18
+    mutate(term_match = str_detect(PRO18, regex(regex_term, ignore_case = TRUE))) %>% # Check if term is in PRO18
+    filter(term_match) %>%  # Only keep rows where the term is found in PRO18
+    summarise(across(`2021`:`2024`, sum, na.rm = TRUE)) %>% # Sum the values for each year
+    mutate(Organization = paste("Mentions of", term)) # Add term label
+}
+
+# Sum mentions for each term
+sums <- lapply(terms_to_count, sum_mentions)
+
+# Combine the sums into a single data frame
+mention_counts <- bind_rows(sums)
+
+# Print the final sums
+mention_counts <- mention_counts %>%
+  select(c("Organization", "2021", "2022", "2023", "2024"))
+print(mention_counts)
+
+# Step 3: Create FlexTables
+
+# Styling Variables
+section_header_color <- "#f3f3f3"  # Light grey for section headers
+
+# Create FlexTable with Styling for all orgs
+partnership_org_flextable <- flextable(partnership_summary) %>%
+  set_table_properties(width = 1.0, layout = "autofit") %>%
+  theme_vanilla() %>%  # Base theme
+  fontsize(size = 10, part = "all") %>%  # Set font size
+  bold(part = "header") %>%  # Bold the header
+  bg(part = "header", bg = "#4cc3c9") %>%  # Set header background color
+  set_table_properties(layout = "autofit", width = 0.6)  # Adjust table sizing
+
+# Apply conditional styling (only if table has rows)
+if (nrow(partnership_summary) > 0) {
+  partnership_org_flextable <- partnership_org_flextable %>%
+    color(i = 1, color = "black", part = "body")  # Keep the text black (default)
+}
+
+# Manually adjust column widths for better fit to page (proportions)
+# Set widths between 0 and 1. Here we are proportionally adjusting the column widths.
+partnership_org_flextable <- partnership_org_flextable %>%
+  set_table_properties(width = c(0.2, 0.25, 0.25, 0.15, 0.15))  # Proportional widths for each column
+
+# Add Caption
+partnership_org_flextable <- partnership_org_flextable %>%
+  set_caption("Partnerships Summary")  # Table Caption
+
+# Display the Table
+print(partnership_org_flextable)
+
+
+# Styling Variables
+section_header_color <- "#f3f3f3"  # Light grey for section headers
+
+# Create FlexTable with Styling for specific orgs mentioned
+organization_mentions_flextable <- flextable(mention_counts) %>%
+  theme_vanilla() %>%  # Base theme
+  fontsize(size = 10, part = "all") %>%  # Set font size
+  bold(part = "header") %>%  # Bold the header
+  bg(part = "header", bg = "#4cc3c9") %>%  # Set header background color
+  autofit() %>%  # Auto-adjust column widths
+  set_table_properties(layout = "autofit", width = 0.6)  # Adjust table sizing
+
+# Apply conditional styling (only if table has rows)
+if (nrow(mention_counts) > 0) {
+  organization_mentions_flextable <- organization_mentions_flextable %>%
+    color(i = 1, color = "black", part = "body")  # Keep the text black (default)
+}
+
+# Add Caption
+organization_mentions_flextable <- organization_mentions_flextable %>%
+  set_caption("Organization Mentions by Year")  # Table Caption
+
+# Display the Table
+print(organization_mentions_flextable)
+print(partnership_org_flextable)
                         
 # ======================================================
 # Breakdown of GRF Pledges
@@ -2132,7 +2278,7 @@ word_doc <- read_docx()
 
 word_doc <- read_docx()  # Initialize a fresh document
                         
-# Add structured content to Word
+# Add structured content to Word (portrait mode)
 word_doc <- word_doc %>%
   body_add_par("GAIN 2024 Annual Report", style = "heading 1") %>%
   body_add_flextable(figure6) %>%
@@ -2182,6 +2328,10 @@ word_doc <- word_doc %>%
   body_add_break() %>%
   body_add_par("Breakdown of Nationally Led Partnerships by Year and Type", style = "heading 2") %>%
   body_add_flextable(partnership_flextable) %>%
+  body_add_break() %>%
+  body_add_flextable(partnership_org_flextable) %>%
+  body_add_break() %>%
+  body_add_flextable(organization_mentions_flextable) %>%
   body_add_break() %>%
   body_add_par("Summary Table: GFR Data on Pledges", style = "heading 2") %>%
   body_add_flextable(grf_flextable) %>%
