@@ -2130,6 +2130,8 @@ library(officer)
 # Initialize a fresh document
 word_doc <- read_docx()
 
+word_doc <- read_docx()  # Initialize a fresh document
+                        
 # Add structured content to Word
 word_doc <- word_doc %>%
   body_add_par("GAIN 2024 Annual Report", style = "heading 1") %>%
