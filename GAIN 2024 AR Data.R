@@ -18,6 +18,12 @@ library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(ggrepel)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(magick)
+library(gridExtra)
+library(grid)
 
 # ======================================================
 # Set Working Directory Dynamically
@@ -749,23 +755,32 @@ writeData(wb, "Future Projects", combined_future_projects, startRow = 1, startCo
 saveWorkbook(wb, output_excel_file, overwrite = TRUE)
 
 message("Future Projects tables added to the Annual Report Excel file.")
-                        
-# ======================================================
+
+# ============================================================================================================
+# ============================================================================================================
 # R Script for Enhanced GAIN 2024 Annual Report (Word)
-# ======================================================
+# ============================================================================================================
+# ============================================================================================================
 
 # Load required libraries
-library(dplyr)
-library(flextable)
-library(readr)
-library(writexl)
-library(officer)
-library(tidyr)
-library(ggplot2)
-library(sf)
-library(rnaturalearth)
-library(rnaturalearthdata)
-library(patchwork)  # For arranging plots
+library(dplyr)          # Data manipulation
+library(tidyr)          # Data tidying
+library(readr)          # Reading CSV files
+library(readxl)         # Reading Excel files
+library(writexl)        # Writing Excel files
+library(openxlsx)       # Advanced Excel manipulation
+library(officer)        # Word and PowerPoint document generation
+library(flextable)      # Creating beautiful tables
+library(ggplot2)        # Data visualization
+library(sf)             # Spatial data handling
+library(rnaturalearth)  # Access to natural Earth map data
+library(rnaturalearthdata)  # Supporting data for rnaturalearth
+library(ggrepel)        # Enhanced label placement in ggplot2
+library(magick)         # Image manipulation
+library(gridExtra)      # Grid-based layout for multiple plots
+library(grid)           # Base R graphics system
+library(patchwork)      # Easy plot arrangement in ggplot2
+
 
 # EGRISS Color Scheme
 primary_color <- "#4cc3c9"
@@ -793,7 +808,7 @@ create_flextable <- function(data, title) {
 }
 
 # ======================================================
-# Summary of Country-Led Examples (Figure 6)
+# Summary of Country-Led Examples (Figure 4 in New Version of AR)
 # ======================================================
 
 summary_table <- group_roster %>%
@@ -918,7 +933,11 @@ merged_df <- bind_rows(graph_data_table, summary_table)
 primary_color <- "#4cc3c9"  # Light blue
 secondary_color <- "#3b71b3"  # Dark blue
 
-# Create Merged Flextable with Caption and Colorized Rows
+
+# Summary of Country-Led Examples (Figure 6)
+
+
+# Create Merged Flextable with Enhanced Formatting
 figure6 <- flextable(merged_df) %>%
   set_header_labels(
     `Example Lead/Placement` = "Example Lead/Placement",
@@ -928,35 +947,34 @@ figure6 <- flextable(merged_df) %>%
   fontsize(size = 10, part = "all") %>%
   bold(part = "header") %>%
   bg(part = "header", bg = primary_color) %>%
-  autofit() %>%
+  autofit() %>% 
+  border_outer(border = fp_border(color = "black", width = 1)) %>%  # Added outer border
   delete_columns(j = c("g_conled", "PRO09")) %>%  # Remove g_conled & PRO09
-  color(i = 1:2, color = secondary_color, part = "body") %>%  # Apply secondary color to first two rows
-  color(i = 3:4, color = primary_color, part = "body") %>%  # Apply primary color to third and fourth rows
+  color(i = 1:2, color = secondary_color, part = "body") %>%  
+  color(i = 3:4, color = primary_color, part = "body") %>%  
   add_footer_row(
     values = paste0(
-      "Graph Data is based on data needed for Figure 4 in the 2024 Annual Report. ",
-      "Overall institutions here include both international organizations and NSOs to represent all findings. ",
-      "Data is generated using the following variables: ",
-      "• Example Lead/Placement: Categorizes national, institutional, and CSO-led examples. ",
-      "• Use of Recommendations: Tracks whether EGRISS recommendations were used. ",
-      "• g_conled: Defines data governance structure: ",
-      "   - Nationally led (g_conled = 1): Includes cases where data collection was led by a country (gLOC01 = 1) or an international institution but explicitly country-led (gLOC01 = 2 and PRO03D = 1). ",
-      "   - Institutionally led (g_conled = 2): Cases where an international institution led data collection without explicit country leadership (gLOC01 = 2 and PRO03D ≠ 1). ",
-      "   - CSO-led or other (g_conled = 3): Cases where data collection was conducted by civil society organizations or other entities (gLOC01 = 3). ",
-      "• PRO09: Specifies the use of EGRISS recommendations in data collection efforts."
+      "Footnote: This data supports Figure 4 in the 2024 Annual Report. ",
+      "It tracks national and institutional examples of EGRISS recommendation use. ",
+      "Definitions: ",
+      "• Nationally Led: Country-led data collection initiatives. ",
+      "• Institutionally Led: Data collection led by international organizations without explicit country leadership. ",
+      "• CSO-Led or Other: Data collection by civil society organizations or other entities. ",
+      "• PRO09: Identifies if EGRISS recommendations were used in data collection efforts. "
     ),
-    colwidths = ncol(merged_df) - 2  # Adjust column span after deletion
+    colwidths = ncol(merged_df) - 2
   ) %>%
-  fontsize(size = 7, part = "footer") %>%  # Set footer text size to 7
-  set_caption("Figure 4: Trend of Country and Institutional-led Implementation Examples (2021-2024)")  # Add caption
+  fontsize(size = 7, part = "footer") %>%
+  set_caption("Figure 4: Trend of Country and Institutional-led Implementation Examples (2021-2024)")
 
 # Display Merged Table
-figure6
+figure6 # this is a bit confusing and in some revision should be named figure 4 
+
 
                         
-# ======================================================
-# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5)
-# ======================================================
+# ============================================================================================================
+# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5) in new version of AR 
+# ============================================================================================================
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 # Define Colors (with transparency for better readability)
@@ -1030,11 +1048,13 @@ figure7 <- flextable(recuse_table) %>%
   bold(part = "header") %>%
   bg(part = "header", bg = "#4cc3c9") %>%
   autofit() %>%
+  border_outer(border = fp_border(color = "black", width = 1)) %>%  # Added outer border
   bg(i = 1, bg = iris_color, part = "body") %>%  # IRIS
   bg(i = 2, bg = irrs_color, part = "body") %>%  # IRRS
-  bg(i = 3, bg = iross_color, part = "body") %>% # IROSS
-  bg(i = 4, bg = mixed_color, part = "body") %>% # Mixed
-  bg(i = 5, bg = undetermined_color, part = "body") %>% # Undetermined
+  bg(i = 3, bg = iross_color, part = "body") %>%  # IROSS
+  bg(i = 4, bg = mixed_color, part = "body") %>%  # Mixed
+  bg(i = 5, bg = undetermined_color, part = "body") %>%  # Undetermined
+  color(i = 1:5, color = "white", part = "body") %>%  # White text for first five rows
   add_footer_row(
     values = paste0(
       "Graph Data is based on the implementation of the IRRS, IRIS, and IROSS in 2024. ",
@@ -1051,11 +1071,14 @@ figure7 <- flextable(recuse_table) %>%
   set_caption("Figure 5: Overview of the Implementation of the IRRS, IRIS and IROSS in 2024")  # Add caption
 
 # Display Merged Table
-figure7
-# ======================================================
-# Figure 7 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
-# ======================================================
+figure7 # this is now Fiure 5 in AR new version 
+
+# ============================================================================================================
+# Figure 7: Overview Data Sources and Tools for Country-led Examples 2024 (in new version fo AR)
+# ============================================================================================================
+
 # Step 1: Prepare the data for National Examples (g_conled == 1)
+
 aggregated_national <- group_roster %>%
   filter(g_conled == 1) %>%  
   mutate(across(starts_with("PRO08."), as.integer)) %>%  
@@ -1091,6 +1114,7 @@ aggregated_national <- group_roster %>%
   mutate(`Example Category` = "Graph Data National Examples")  
 
 # Step 2: Prepare the data for Institutional Examples (g_conled == 2 or g_conled == 3)
+
 aggregated_institutional <- group_roster %>%
   filter(g_conled %in% c(2, 3)) %>%  
   mutate(across(starts_with("PRO08."), as.integer)) %>%  
@@ -1126,6 +1150,7 @@ aggregated_institutional <- group_roster %>%
   mutate(`Example Category` = "Overall Institution Examples")  
 
 # Step 3: Combine both datasets
+
 aggregated_data <- bind_rows(aggregated_national, aggregated_institutional) %>%
   mutate(
     `Use of Recommendations` = factor(
@@ -1147,26 +1172,37 @@ default_border <- fp_border(color = "black", width = 0.5)  # Default border for 
 figure8_flextable <- flextable(aggregated_data) %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
+  bg(part = "header", bg = "#4cc3c9") %>%  # Light blue header
   merge_v(j = ~ `Example Category`) %>%  
   merge_v(j = ~ `Use of Recommendations`) %>%  
   bg(bg = "#f4cccc", j = ~ `2024`) %>%   
   bg(bg = "#c9daf8", j = ~ Total) %>%   
-  border_outer(border = fp_border(color = "black", width = 2)) %>%
-  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  border_outer(border = fp_border(color = "black", width = 2)) %>%  # Outer border
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%  # Inner borders
   fontsize(size = 8) %>%
   
-  # New `autofit()` for optimal column width
+  # **AutoFit for Better Readability**
   autofit() %>%
   
-  # Apply colored borders only for "Graph Data National Examples"
-  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Using Recommendations"), border.top = solid_border) %>%
-  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Using Recommendations"), border.bottom = solid_border) %>%
-  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), border.top = dashed_border) %>%
-  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), border.bottom = dashed_border) %>%
+  # Apply colored borders for Graph Data National Examples
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & 
+                     aggregated_data$`Use of Recommendations` == "Using Recommendations"), 
+         border.top = solid_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & 
+                     aggregated_data$`Use of Recommendations` == "Using Recommendations"), 
+         border.bottom = solid_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & 
+                     aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), 
+         border.top = dashed_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Graph Data National Examples" & 
+                     aggregated_data$`Use of Recommendations` == "Not Using Recommendations and Other"), 
+         border.bottom = dashed_border) %>%
   
-  # Reset to default borders for "Overall Institution Examples"
-  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), border.top = default_border) %>%
-  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), border.bottom = default_border) %>%
+  # Reset to default borders for Overall Institution Examples
+  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), 
+         border.top = default_border) %>%
+  border(i = which(aggregated_data$`Example Category` == "Overall Institution Examples"), 
+         border.bottom = default_border) %>%
   
   # Footer details
   add_footer_row(
@@ -1180,19 +1216,19 @@ figure8_flextable <- flextable(aggregated_data) %>%
       "• Other: Sum of responses to PRO08.F, PRO08.G, PRO08.H, and PRO08.X. ",
       "  This is a multiple-response question, meaning one example can feature multiple sources or tools."
     ),
-    colwidths = ncol(aggregated_data)  
+    colwidths = ncol(aggregated_data)
   ) %>%
   fontsize(size = 7, part = "footer") %>%
   set_caption("Figure 7: Overview Data Sources and Tools for Country-led Examples 2024")
 
-# Display Table
-print(figure8_flextable)
-
-# ======================================================
-# Figure 6: Implementation of the Recommendations by Region
-# ======================================================
+# Display Updated Table
+print(figure8_flextable) #used to be figure 7 so maybe confusing
+# ============================================================================================================
+# Figure 6: Implementation of the Recommendations by Region (in new version of AR)
+# ============================================================================================================
 
 # Step 1: Extract Country-led Examples Using Recommendations
+
 regional_data_using_recs <- group_roster %>%
   filter(PRO09 == 1, g_conled == 1) %>%
   group_by(region, ryear) %>%
@@ -1201,6 +1237,7 @@ regional_data_using_recs <- group_roster %>%
   mutate(`Example Category` = "Graph Data: Country-led Example Using Recommendations")
 
 # Step 2: Extract Overall Country-led Examples (Including those without use of recommendations)
+
 regional_data_overall <- group_roster %>%
   filter(g_conled == 1) %>%
   group_by(region, ryear) %>%
@@ -1209,6 +1246,7 @@ regional_data_overall <- group_roster %>%
   mutate(`Example Category` = "Overall Country-led Example")
 
 # Step 3: Combine both datasets
+
 regional_data_combined <- bind_rows(regional_data_using_recs, regional_data_overall) %>%
   rename(Region = region) %>%
   select(`Example Category`, Region, everything())  # Ensure correct column order
@@ -1217,28 +1255,37 @@ regional_data_combined <- bind_rows(regional_data_using_recs, regional_data_over
 highlight_border <- fp_border(color = "#3b71b3", width = 1.5)  # Blue for Graph Data section
 default_border <- fp_border(color = "black", width = 1)  # Default black border for Overall section
 header_color <- "#4cc3c9"  # Primary color for header row
+header_border <- fp_border(color = "black", width = 1)  # Black border for header
 
 # Step 4: Create FlexTable and retain the name as "text1"
+
 text1 <- flextable(regional_data_combined) %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
   fontsize(size = 10, part = "body") %>%  # Set font size 10 for body text
   merge_v(j = ~ `Example Category`) %>%  # Merge vertical cells for "Example Category"
   autofit() %>%
-  bg(part = "header", bg = header_color) %>%  # Apply primary color to header
-  color(part = "header", color = "white") %>%  # Ensure header text is readable
+  
+  # Header Styling
+  bg(part = "header", bg = header_color) %>%
+  color(part = "header", color = "black") %>%  # Black font in header for better contrast
+  border(part = "header", border.top = header_border, border.bottom = header_border) %>%  # Header Border
+  
   # Apply blue border styling for "Graph Data: Country-led Example Using Recommendations"
   border(i = which(regional_data_combined$`Example Category` == "Graph Data: Country-led Example Using Recommendations"), 
          border.top = highlight_border, 
          border.bottom = highlight_border, 
          border.left = highlight_border, 
          border.right = highlight_border) %>%
+  
   # Apply black border styling for "Overall Country-led Example"
   border(i = which(regional_data_combined$`Example Category` == "Overall Country-led Example"), 
          border.top = default_border, 
          border.bottom = default_border, 
          border.left = default_border, 
          border.right = default_border) %>%
+  
+  # Footer details
   add_footer_row(
     values = paste0(
       "Graph Data: Country-led Example Using Recommendations refers to country-led projects that explicitly use EGRISS recommendations. ",
@@ -1247,22 +1294,17 @@ text1 <- flextable(regional_data_combined) %>%
     ),
     colwidths = ncol(regional_data_combined)  # Ensure footer spans full table width
   ) %>%
-  fontsize(size = 7, part = "footer") %>%  
+  fontsize(size = 7, part = "footer") %>%
   set_caption("Figure 6: Implementation of the Recommendations by Region")
 
 # Display the table
-text1
 
-# Load required libraries
-library(ggplot2)
-library(sf)
-library(dplyr)
-library(magick)
-library(gridExtra)
-library(grid)
+text1 # this is now Figure 6 in AR 
+
+
 
 # ======================================================
-# Map Additional to GAIN 1: Prepare World Map (Remove Arctic & Antarctica)
+# Map Additional to GAIN 1: Prepare World Map (Remove Arctic & Antarctica) # to work more on maps later
 # ======================================================
 
 # Remove Antarctica from the world dataset
@@ -1568,23 +1610,23 @@ library(officer)
 library(readr)
 
 
-# ======================================================
-# Load and process PRO11/PRO12 variables
-# ======================================================
+# ============================================================================================================
+# Figure XX (text in AR): Components of EGRISS Recommendations Most Frequently Used
+# ============================================================================================================
 
 # Step 1: Load the dataset
 file_path <- file.path(working_dir, "analysis_ready_repeat_PRO11_PRO12.csv")
-repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)  # Ensure recommendation is treated as text
+repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)  
 
 # Step 2: Rename `_recommendation` to `recommendation`
 repeat_data <- repeat_data %>%
   rename(recommendation = X_recommendation) %>%
-  mutate(recommendation = as.character(recommendation))  # Ensure it's a text variable
+  mutate(recommendation = as.character(recommendation))  
 
 # ✅ Convert all PRO12 columns to numeric before pivoting
-pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)  # Starts from PRO12A, excludes PRO12
+pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)
 repeat_data <- repeat_data %>%
-  mutate(across(all_of(pro12_columns), ~ as.numeric(.)))  # Convert PRO12 columns to numeric
+  mutate(across(all_of(pro12_columns), ~ as.numeric(.)))
 
 # Step 3: Convert to long format, classify categories, and aggregate
 processed_data <- repeat_data %>%
@@ -1594,10 +1636,8 @@ processed_data <- repeat_data %>%
     values_to = "Value"
   ) %>%
   
-  # Filter where Value is 1
   filter(Value == 1) %>%
   
-  # Classify PRO12 categories
   mutate(
     Category = case_when(
       Category_Variable == "PRO12A" ~ "Statistical framework/population group",
@@ -1614,13 +1654,9 @@ processed_data <- repeat_data %>%
       TRUE ~ NA_character_
     )
   ) %>%
-  filter(!is.na(Category))  # Remove rows with missing categories
+  filter(!is.na(Category))  
 
-# ======================================================
-# Merge Nationally Led and Institutionally Led Tables
-# ======================================================
-
-# Function to summarize counts by Category and Recommendation
+# Summarize Counts by Category and Recommendation
 summarize_table <- function(data, g_conled_value) {
   data %>%
     filter(g_conled == g_conled_value) %>%
@@ -1632,15 +1668,20 @@ summarize_table <- function(data, g_conled_value) {
 nationally_led_data <- summarize_table(processed_data, 1)
 institutionally_led_data <- summarize_table(processed_data, 2)
 
-# Merge them side by side
-merged_table <- nationally_led_data %>%
-  left_join(institutionally_led_data, by = "Category", suffix = c("_National", "_Institutional"))
 
-# Convert to flextable with an extra merged row for headers
+# EGRISS Color Scheme
+primary_color <- "#4cc3c9"
+secondary_color <- "#3b71b3"
+accent_color <- "#072d62"
+highlight_red <- "#D73027"  # Correct EGRISS red for highlighting
+background_color <- "#f0f8ff"
+
+# Create FlexTable with Enhanced Formatting
 merged_flextable <- flextable(merged_table) %>%
-  add_header_row(values = c("", "Nationally Led", "Institutionally Led"), colwidths = c(1, 3, 3)) %>%
+  add_header_row(values = c("", "Nationally Led Examples", "Institutionally Led Examples"), 
+                 colwidths = c(1, 3, 3)) %>%
   set_header_labels(
-    Category = "Category",
+    Category = "Elements of International Recommendations Used",  # Updated name
     IRRS_National = "IRRS",
     IRIS_National = "IRIS",
     IROSS_National = "IROSS",
@@ -1648,12 +1689,43 @@ merged_flextable <- flextable(merged_table) %>%
     IRIS_Institutional = "IRIS",
     IROSS_Institutional = "IROSS"
   ) %>%
-  autofit() %>%
-  theme_vanilla() %>%  # Base theme
-  color(part = "header", color = "white") %>%
-  bg(part = "header", bg = "#003366") %>%  # Dark blue EGRISS header
-  bold(part = "header") %>%
-  bg(i = seq(1, nrow(merged_table), 2), bg = "#DDEEFF")  # Light blue alternating rows
+  
+  # Default Outer Border for Entire Table
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  
+  # Light Blue Header (First Two Rows)
+  bg(i = 1:2, part = "header", bg = primary_color) %>%
+  color(i = 1:2, part = "header", color = "black") %>%
+  bold(i = 1:2, part = "header") %>%
+  
+  # Red Outer Border for "Statistical framework/population group" (NO INNER VERTICAL BORDERS)
+  border(i = which(merged_table$Category == "Statistical framework/population group"),
+         border.top = fp_border(color = highlight_red, width = 2),
+         border.bottom = fp_border(color = highlight_red, width = 2),
+         border.left = fp_border(color = "transparent", width = 0),
+         border.right = fp_border(color = "transparent", width = 0)) %>%
+  
+  # AutoFit for Optimal Sizing
+  set_table_properties(width = 0.5, layout = "autofit") %>%
+  
+  # Improved User-Friendly Footnote
+  add_footer_row(
+    values = paste0(
+      "Footnote: This table shows which components of EGRISS recommendations are most frequently used. ",
+      "Each row represents an 'Element of International Recommendations' applied in data collection. ",
+      "The highlighted row with a **red border** marks the foundational element: 'Statistical framework/population group'. ",
+      "Columns show counts for data collected through Nationally Led Examples and Institutionally Led Examples. ",
+      "Values are based on reported implementation under PRO11/PRO12 variables."
+    ),
+    colwidths = ncol(merged_table)
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%
+  
+  # Updated Caption
+  set_caption("Figure XX (text in AR): Components of EGRISS Recommendations Most Frequently Used")
+
+# Display the Final Table
+print(merged_flextable)
 
                         
 # ======================================================
