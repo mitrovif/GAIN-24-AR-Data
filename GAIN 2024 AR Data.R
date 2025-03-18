@@ -34,14 +34,11 @@ working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - I
 # Paste your copied Windows file path here
 working_dir <- "C:\\Users\\mitro\\UNHCR\\EGRISS Secretariat - Documents\\905 - Implementation of Recommendations\\01_GAIN Survey\\Integration & GAIN Survey\\EGRISS GAIN Survey 2024\\10 Data\\Analysis Ready Files\\Backup_2025-03-12_10-04-14"
 
-
 # Automatically replace backslashes (\) with forward slashes (/)
 working_dir <- gsub("\\\\", "/", working_dir)
 
-
 # Set working directory
 setwd(working_dir)
-
 
 # Confirm the working directory
 message("Working directory set to: ", getwd())
@@ -110,6 +107,7 @@ colnames(summary_table) <- c(
 
 # Export to the specified folder with the updated name and sheet title
 output_excel_file <- file.path(working_dir, "Annual Report GAIN 2024.xlsx")
+
 # Save the table with the renamed sheet using writexl
 write_xlsx(list(`Figure 6` = summary_table), path = output_excel_file)
 
@@ -842,6 +840,8 @@ summary_table <- summary_table %>%
 
 summary_table$`Example Lead/Placement` <- ifelse(duplicated(summary_table$`Example Lead/Placement`), "", summary_table$`Example Lead/Placement`)
 
+numeric_cols <- summary_table %>%  select(where(is.numeric)) %>%names()
+                        
 # Overall Country-led Example Using Recommendations
 overall_country_led_using_recs <- summary_table %>%
   filter(g_conled == 1 & PRO09 == 1) %>%
@@ -916,7 +916,6 @@ merged_df <- rbind(graph_data_table, summary_table)
 
 # Summary of Country-Led Examples (Figure 6)
 
-
 # Ensure Both Tables Have the Same Columns Before Merging
 all_columns <- union(colnames(graph_data_table), colnames(summary_table))
 
@@ -971,18 +970,14 @@ figure6 <- flextable(merged_df) %>%
 figure6 # this is a bit confusing and in some revision should be named figure 4 
 
 
-# ======================================================
-# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5a)
-# ======================================================
-                        
-<<<<<<< HEAD
+
 # ============================================================================================================
 # Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5) in new version of AR 
 # ============================================================================================================
-=======
->>>>>>> 03c702cf9c7f31ff0fb098e5053f903d93f417c0
+
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
+                        
 # Define Colors (with transparency for better readability)
 iris_color <- "#072D62AA"        # Dark Blue (IRIS)
 irrs_color <- "#14234CAA"        # Navy Blue (IRRS)
@@ -1077,19 +1072,12 @@ figure7 <- flextable(recuse_table) %>%
   set_caption("Figure 5: Overview of the Implementation of the IRRS, IRIS and IROSS in 2024")  # Add caption
 
 # Display Merged Table
-<<<<<<< HEAD
+
 figure7 # this is now Fiure 5 in AR new version 
 
 # ============================================================================================================
 # Figure 7: Overview Data Sources and Tools for Country-led Examples 2024 (in new version fo AR)
 # ============================================================================================================
-
-=======
-figure7
-
-# ======================================================
-# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5b) - Mixed use focus
-# ======================================================
 
 library(dplyr)
 library(tidyr)
@@ -1155,8 +1143,7 @@ final_flextable
 # ======================================================
 # Figure 7 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
 # ======================================================
-                        
->>>>>>> 03c702cf9c7f31ff0fb098e5053f903d93f417c0
+     
 # Step 1: Prepare the data for National Examples (g_conled == 1)
 
 aggregated_national <- group_roster %>%
@@ -1244,10 +1231,12 @@ aggregated_data <- bind_rows(aggregated_national, aggregated_institutional) %>%
     `Use of Recommendations`,
     factor(Source, levels = c("Survey", "Census", "Administrative Data", "Data Integration", "Other"))
   )
+                        
 # Define borders
 solid_border <- fp_border(color = "#3b71b3", width = 2, style = "solid")  # For "Using Recommendations" (Graph Data)
 dashed_border <- fp_border(color = "#3b71b3", width = 2, style = "dashed")  # For "Not Using Recommendations and Other" (Graph Data)
 default_border <- fp_border(color = "black", width = 0.5)  # Default border for "Overall Institution Examples"
+                        
 # Step 4: Beautify and create FlexTable for Word
 figure8_flextable <- flextable(aggregated_data) %>%
   theme_booktabs() %>%
@@ -1391,9 +1380,7 @@ text1 # this is now Figure 6 in AR
 world_filtered <- world %>%
   filter(!grepl("Antarctica", name))  # Exclude Antarctica
 
-
 # Step 2: Create and Save the First Map (Overall Country-led Example)
-
 
 # Filter data for all country-led examples in 2024
 year_data_all <- group_roster %>%
@@ -1430,9 +1417,7 @@ map_all <- ggplot() +
 map_all_image_path <- "map_all.png"
 ggsave(map_all_image_path, map_all, width = 8, height = 6, dpi = 300)
 
-
 # Step 3: Create and Save the Second Map (Overall Country-led Example Using Recommendations)
-
 
 # Filter data for country-led examples where recommendations are used (PRO09 = 1)
 year_data_recs <- group_roster %>%
@@ -1469,9 +1454,7 @@ map_recs <- ggplot() +
 map_recs_image_path <- "map_recs.png"
 ggsave(map_recs_image_path, map_recs, width = 8, height = 6, dpi = 300)
 
-
 # Step 4: Combine Both Maps into a Single Image (One Below the Other)
-
 
 # Load both images
 map_all_img <- image_read(map_all_image_path)
@@ -1484,9 +1467,7 @@ combined_maps <- image_append(c(map_all_img, map_recs_img), stack = TRUE)
 final_combined_maps_path <- "final_combined_maps.png"
 image_write(combined_maps, path = final_combined_maps_path, format = "png")
 
-
 # Step 5: Display the Final Combined Image in R
-
 
 # Display the final combined maps in R
 grid.raster(combined_maps)
@@ -1507,9 +1488,9 @@ header_color <- "#4cc3c9"      # Light Blue Header
 gray_highlight <- "#D9D9D9"   # Gray for Key Rows
 border_style <- fp_border(color = "black", width = 1)
 
-# ======================================================
+
 # PRO19 Responses - Transposed and with Labels
-# ======================================================
+
 
 response_labels <- c(
   "Challenges faced" = "Challenges faced",
@@ -1537,9 +1518,9 @@ pro19_summary <- group_roster %>%
 pro19_summary <- pro19_summary %>%
   mutate(across(c(`2023`, `2024`), as.character))  # Convert to character for compatibility
 
-# ======================================================
+
 # Challenges Reported (Figure 9) - Transposed and with Labels
-# ======================================================
+
 
 challenge_labels <- c(
   "PRO20.A" = "Non-response bias",
@@ -1569,9 +1550,9 @@ challenges_data <- challenges_data %>%
   rename(Response = Challenge) %>%
   mutate(across(c(`2023`, `2024`), as.character))  # Convert to character for compatibility
 
-# ======================================================
+
 # Combining Both Tables into One Stacked Table
-# ======================================================
+
 
 combined_data <- bind_rows(
   tibble(Response = "Count of Respondents Facing Challenges", `2023` = "", `2024` = ""),
@@ -1609,9 +1590,9 @@ figure9 <- flextable(combined_data) %>%
 
 print(figure9)
                         
-# ======================================================
+# ===========================================================================================================
 # Generate Institutional Implementation breakdown table - by source
-# ======================================================
+# ============================================================================================================
                         
 institutional_implementation_table <- group_roster %>%
   filter(g_conled == 2) %>%
@@ -1656,10 +1637,10 @@ institutional_flextable <- flextable(institutional_implementation_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Institutional Implementation Breakdown")
-
-# ======================================================
+institutional_flextable
+# =============================================================================================================
 # Generate Institutional Implementation breakdown table - by implementation level
-# ======================================================
+# =============================================================================================================
 
 institutional_implementation_table_level <- group_roster %>%
   filter(g_conled == 2 | g_conled == 3) %>%
@@ -1719,10 +1700,10 @@ institutional_level_flextable <- flextable(institutional_implementation_table_le
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Institutional Implementation Breakdown by Implementation Level")
-                        
-# ======================================================
+institutional_level_flextable                        
+# =============================================================================================================
 # Add Future Projects 
-# ======================================================
+# =============================================================================================================
 
 sapply(group_roster2[, fpr05_columns], class)
 group_roster2 <- group_roster2 %>%
@@ -1764,7 +1745,7 @@ source_summary_flextable <- flextable(source_summary) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Future Projects Breakdown by Source for 2024")
-                        
+source_summary_flextable                        
 # ============================================================================================================
 # Unique Country Count for Use of Recommendations (PRO09 == 1) by Leadership Type
 # ============================================================================================================
@@ -1895,7 +1876,7 @@ unique_country_flextable
 # List of Countries by Region
 country_list_flextable <- flextable(list_countries_by_region(group_roster)) %>%
   delete_columns(j = "ryear") %>%
-  set_table_properties(width = 1.0, layout = "autofit") %>%  # Adjusted width to 1.0 to expand the table
+  set_table_properties(width = 0.5, layout = "autofit") %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
   bg(part = "header", bg = primary_color) %>%
@@ -1924,6 +1905,9 @@ repeat_data <- read.csv(file_path, stringsAsFactors = FALSE)
 repeat_data <- repeat_data %>%
   rename(recommendation = X_recommendation) %>%
   mutate(recommendation = as.character(recommendation))  
+
+  mutate(recommendation = na_if(trimws(as.character(recommendation)), ""))
+
 
 # ✅ Convert all PRO12 columns to numeric before pivoting
 pro12_columns <- grep("^PRO12[A-ZX]", names(repeat_data), value = TRUE)
@@ -1978,12 +1962,25 @@ accent_color <- "#072d62"
 highlight_red <- "#D73027"  # Correct EGRISS red for highlighting
 background_color <- "#f0f8ff"
 
+
+# EGRISS Color Scheme
+primary_color <- "#4cc3c9"
+secondary_color <- "#3b71b3"
+accent_color <- "#072d62"
+highlight_red <- "#D73027"  # Correct EGRISS red for highlighting
+background_color <- "#f0f8ff"
+# Step 4: Merge Nationally and Institutionally Led Data
+merged_table <- nationally_led_data %>%
+  full_join(institutionally_led_data, by = "Category", suffix = c("_National", "_Institutional"))
+
 # Create FlexTable with Enhanced Formatting
 merged_flextable <- flextable(merged_table) %>%
   add_header_row(values = c("", "Nationally Led Examples", "Institutionally Led Examples"), 
                  colwidths = c(1, 3, 3)) %>%
   set_header_labels(
     Category = "Elements of International Recommendations Used",  # Updated name
+
+    Category = "Elements of International Recommendations Used",
     IRRS_National = "IRRS",
     IRIS_National = "IRIS",
     IROSS_National = "IROSS",
@@ -2001,6 +1998,8 @@ merged_flextable <- flextable(merged_table) %>%
   bold(i = 1:2, part = "header") %>%
   
   # Red Outer Border for "Statistical framework/population group" (NO INNER VERTICAL BORDERS)
+
+  # Red Outer Border for "Statistical framework/population group"
   border(i = which(merged_table$Category == "Statistical framework/population group"),
          border.top = fp_border(color = highlight_red, width = 2),
          border.bottom = fp_border(color = highlight_red, width = 2),
@@ -2029,10 +2028,11 @@ merged_flextable <- flextable(merged_table) %>%
 # Display the Final Table
 print(merged_flextable)
 
-                        
-# ======================================================
+
+            
+# ============================================================================================================
 # Breakdown of Nationally Led Partnerships
-# ======================================================
+# ============================================================================================================
 
 library(dplyr)
 library(tidyr)
@@ -2107,10 +2107,121 @@ partnership_flextable <- flextable(partnership_data) %>%
 
 # Display Table in RStudio Viewer (for verification)
 partnership_flextable
+
+# ============================================================================================================
+# Partnerships and Organization Mentions in R with FlexTable
+# ============================================================================================================
+
+library(dplyr)
+library(tidyr)
+library(flextable)
+library(stringr)
+
+# Load dataset
+file_path <- "analysis_ready_group_roster.csv"
+group_roster <- read.csv(file_path)
+
+# Step 1: Partnerships Table (based on PRO18)
+partnership_summary <- group_roster %>%
+  group_by(ryear, PRO18) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  pivot_wider(names_from = ryear, values_from = Count, values_fill = 0) %>%
+  mutate(Total = rowSums(across(where(is.numeric))))
+
+# Load necessary libraries
+library(dplyr)
+library(stringr)
+
+# List of terms to sum
+terms_to_count <- c("UNHCR", "IOM", "JDC", "UNFPA", "World Bank")
+
+# Function to sum the year values for each term in PRO18 using regex
+sum_mentions <- function(term) {
+  # Define the regex pattern to match the term, considering different punctuations and spaces around it
+  regex_term <- paste0("\\b", term, "\\b")  # Match the exact term as a word (boundary)
+  
+  # Sum the year values for rows that match the term in PRO18, excluding NA values in PRO18
+  partnership_summary %>%
+    filter(!is.na(PRO18)) %>%  # Exclude rows with NA in PRO18
+    mutate(term_match = str_detect(PRO18, regex(regex_term, ignore_case = TRUE))) %>% # Check if term is in PRO18
+    filter(term_match) %>%  # Only keep rows where the term is found in PRO18
+    summarise(across(`2021`:`2024`, sum, na.rm = TRUE)) %>% # Sum the values for each year
+    mutate(Organization = paste("Mentions of", term)) # Add term label
+}
+
+# Sum mentions for each term
+sums <- lapply(terms_to_count, sum_mentions)
+
+# Combine the sums into a single data frame
+mention_counts <- bind_rows(sums)
+
+# Print the final sums
+mention_counts <- mention_counts %>%
+  select(c("Organization", "2021", "2022", "2023", "2024"))
+print(mention_counts)
+
+# Step 3: Create FlexTables
+
+# Styling Variables
+section_header_color <- "#f3f3f3"  # Light grey for section headers
+
+# Create FlexTable with Styling for all orgs
+partnership_org_flextable <- flextable(partnership_summary) %>%
+  set_table_properties(width = 1.0, layout = "autofit") %>%
+  theme_vanilla() %>%  # Base theme
+  fontsize(size = 10, part = "all") %>%  # Set font size
+  bold(part = "header") %>%  # Bold the header
+  bg(part = "header", bg = "#4cc3c9") %>%  # Set header background color
+  set_table_properties(layout = "autofit", width = 0.6)  # Adjust table sizing
+
+# Apply conditional styling (only if table has rows)
+if (nrow(partnership_summary) > 0) {
+  partnership_org_flextable <- partnership_org_flextable %>%
+    color(i = 1, color = "black", part = "body")  # Keep the text black (default)
+}
+
+# Manually adjust column widths for better fit to page (proportions)
+# Set widths between 0 and 1. Here we are proportionally adjusting the column widths.
+partnership_org_flextable <- partnership_org_flextable %>%
+  set_table_properties(width = c(0.2, 0.25, 0.25, 0.15, 0.15))  # Proportional widths for each column
+
+# Add Caption
+partnership_org_flextable <- partnership_org_flextable %>%
+  set_caption("Partnerships Summary")  # Table Caption
+
+# Display the Table
+print(partnership_org_flextable)
+
+
+# Styling Variables
+section_header_color <- "#f3f3f3"  # Light grey for section headers
+
+# Create FlexTable with Styling for specific orgs mentioned
+organization_mentions_flextable <- flextable(mention_counts) %>%
+  theme_vanilla() %>%  # Base theme
+  fontsize(size = 10, part = "all") %>%  # Set font size
+  bold(part = "header") %>%  # Bold the header
+  bg(part = "header", bg = "#4cc3c9") %>%  # Set header background color
+  autofit() %>%  # Auto-adjust column widths
+  set_table_properties(layout = "autofit", width = 0.6)  # Adjust table sizing
+
+# Apply conditional styling (only if table has rows)
+if (nrow(mention_counts) > 0) {
+  organization_mentions_flextable <- organization_mentions_flextable %>%
+    color(i = 1, color = "black", part = "body")  # Keep the text black (default)
+}
+
+# Add Caption
+organization_mentions_flextable <- organization_mentions_flextable %>%
+  set_caption("Organization Mentions by Year")  # Table Caption
+
+# Display the Table
+print(organization_mentions_flextable)
+print(partnership_org_flextable)
                         
-# ======================================================
+# ============================================================================================================
 # Breakdown of GRF Pledges
-# ======================================================
+# ============================================================================================================
 
 # Load necessary libraries
 library(readxl)
@@ -2218,12 +2329,15 @@ print(grf_flextable)
 # ======================================================
 # Add to Word document
 # ======================================================
+                        
 library(officer)
 
 # Initialize a fresh document
 word_doc <- read_docx()
 
-# Add structured content to Word
+word_doc <- read_docx()  # Initialize a fresh document
+                        
+# Add structured content to Word (portrait mode)
 word_doc <- word_doc %>%
   body_add_par("GAIN 2024 Annual Report", style = "heading 1") %>%
   body_add_flextable(figure6) %>%
@@ -2272,7 +2386,10 @@ word_doc <- word_doc %>%
   body_add_par("Breakdown of Nationally Led Partnerships by Year and Type", style = "heading 2") %>%
   body_add_flextable(partnership_flextable) %>%
   body_add_break() %>%
-  
+  body_add_flextable(partnership_org_flextable) %>%
+  body_add_break() %>%
+  body_add_flextable(organization_mentions_flextable) %>%
+  body_add_break() %>%
   body_add_par("Summary Table: GFR Data on Pledges", style = "heading 2") %>%
   body_add_flextable(grf_flextable) %>%
   
