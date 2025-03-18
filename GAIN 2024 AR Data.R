@@ -971,10 +971,16 @@ figure6 <- flextable(merged_df) %>%
 figure6 # this is a bit confusing and in some revision should be named figure 4 
 
 
+# ======================================================
+# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5a)
+# ======================================================
                         
+<<<<<<< HEAD
 # ============================================================================================================
 # Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5) in new version of AR 
 # ============================================================================================================
+=======
+>>>>>>> 03c702cf9c7f31ff0fb098e5053f903d93f417c0
 group_roster_file <- file.path(working_dir, "analysis_ready_group_roster.csv")
 group_roster <- read.csv(group_roster_file)
 # Define Colors (with transparency for better readability)
@@ -1071,12 +1077,86 @@ figure7 <- flextable(recuse_table) %>%
   set_caption("Figure 5: Overview of the Implementation of the IRRS, IRIS and IROSS in 2024")  # Add caption
 
 # Display Merged Table
+<<<<<<< HEAD
 figure7 # this is now Fiure 5 in AR new version 
 
 # ============================================================================================================
 # Figure 7: Overview Data Sources and Tools for Country-led Examples 2024 (in new version fo AR)
 # ============================================================================================================
 
+=======
+figure7
+
+# ======================================================
+# Overview of the Implementation of the IRRS, IRIS, and IROSS (Figure 5b) - Mixed use focus
+# ======================================================
+
+library(dplyr)
+library(tidyr)
+library(flextable)
+
+# Filter for Mixed Use Entries
+mixed_use_table <- group_roster %>%
+  filter(g_recuse == "Mixed") %>%
+  mutate(
+    Mixed_Category = case_when(
+      PRO10.A == 1 & PRO10.B == 1 & PRO10.C != 1 ~ "IRRS + IRIS",
+      PRO10.A == 1 & PRO10.B != 1 & PRO10.C == 1 ~ "IRRS + IROSS",
+      PRO10.A != 1 & PRO10.B == 1 & PRO10.C == 1 ~ "IRIS + IROSS",
+      PRO10.A == 1 & PRO10.B == 1 & PRO10.C == 1 ~ "All 3 Combined",
+      TRUE ~ "Other"
+    ),
+    `Example Lead` = case_when(
+      g_conled == 1 ~ "Nationally Led Examples",
+      g_conled %in% c(2, 3) ~ "Institutionally Led Examples",
+      TRUE ~ "Unknown"
+    )
+  ) %>%
+  filter(Mixed_Category != "Other") %>%
+  group_by(`Example Lead`, Mixed_Category, ryear) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = Count, values_fill = 0) %>%
+  select(`Example Lead`, Mixed_Category, `2021`, `2022`, `2023`, `2024`)  # Removed Total
+
+# Add Overall Summary
+overall_summary <- mixed_use_table %>%
+  group_by(Mixed_Category) %>%
+  summarise(across(`2021`:`2024`, sum, na.rm = TRUE)) %>%
+  mutate(`Example Lead` = "Overall")
+
+# Combine Overall, Nationally Led, and Institutionally Led Tables in Correct Order
+final_table <- bind_rows(
+  overall_summary,                        
+  mixed_use_table %>% filter(`Example Lead` == "Nationally Led Examples"),
+  mixed_use_table %>% filter(`Example Lead` == "Institutionally Led Examples")
+)
+
+# Remove duplicated Example Lead labels for cleaner presentation
+final_table$`Example Lead` <- ifelse(duplicated(final_table$`Example Lead`), "", final_table$`Example Lead`)
+
+# Create flextable with outer border
+final_flextable <- flextable(final_table) %>%
+  theme_vanilla() %>%
+  fontsize(size = 10, part = "all") %>%
+  bold(part = "header") %>%
+  bg(part = "header", bg = "#4cc3c9") %>%
+  border_outer(part = "all", border = fp_border(color = "black", width = 2)) %>%
+  autofit() %>%
+  add_footer_row(
+    values = "Graph Data includes combinations of IRRS, IRIS, and IROSS recommendations categorized by lead type.",
+    colwidths = ncol(final_table)
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%
+  set_caption("Overview of Mixed Use of Recommendations by Lead Type in 2024")
+
+# Display the new table
+final_flextable
+                        
+# ======================================================
+# Figure 7 - Step 1: Aggregate PRO08 variables into specified categories and count each source by year
+# ======================================================
+                        
+>>>>>>> 03c702cf9c7f31ff0fb098e5053f903d93f417c0
 # Step 1: Prepare the data for National Examples (g_conled == 1)
 
 aggregated_national <- group_roster %>%
@@ -1414,21 +1494,64 @@ grid.raster(combined_maps)
 # Print success message
 cat("Final combined maps saved as:", final_combined_maps_path, "\n")
 
+# ============================================================================================================
+# Figure 9: Overview of Respondents Facing Challenges and Types of Challenges Identified
+# ============================================================================================================
+
+library(flextable)
+library(dplyr)
+library(tidyr)
+
+# Custom Colors
+header_color <- "#4cc3c9"      # Light Blue Header
+gray_highlight <- "#D9D9D9"   # Gray for Key Rows
+border_style <- fp_border(color = "black", width = 1)
+
+# ======================================================
+# PRO19 Responses - Transposed and with Labels
+# ======================================================
+
+response_labels <- c(
+  "Challenges faced" = "Challenges faced",
+  "No challenges faced" = "No challenges faced",
+  "No Response on Challenges or Don't Know" = "No Response on Challenges or Don't Know"
+)
+
+pro19_summary <- group_roster %>%
+  filter(ryear %in% c(2023, 2024), g_conled == 1, PRO09 == 1) %>%
+  select(ryear, PRO19) %>%
+  mutate(Response = case_when(
+    PRO19 == 2 | PRO19 == "NO" ~ "No challenges faced",
+    PRO19 == 1 | PRO19 == "YES" ~ "Challenges faced",
+    PRO19 == 9 | PRO19 == "NO RESPONSE" ~ "No Response on Challenges or Don't Know",
+    PRO19 == 8 | PRO19 == "DON'T KNOW" ~ "No Response on Challenges or Don't Know",
+    is.na(PRO19) ~ "No Response on Challenges or Don't Know",
+    TRUE ~ as.character(PRO19)
+  )) %>%
+  mutate(Response = recode(Response, !!!response_labels)) %>%
+  group_by(Response, ryear) %>%
+  summarize(Count = n(), .groups = 'drop') %>%
+  complete(Response = names(response_labels), ryear = c(2023, 2024), fill = list(Count = 0)) %>%
+  pivot_wider(names_from = ryear, values_from = Count)
+
+pro19_summary <- pro19_summary %>%
+  mutate(across(c(`2023`, `2024`), as.character))  # Convert to character for compatibility
+
 # ======================================================
 # Challenges Reported (Figure 9) - Transposed and with Labels
 # ======================================================
-                        
+
 challenge_labels <- c(
-  "PRO20.A" = "NON-RESPONSE BIAS",
-  "PRO20.B" = "SAMPLING ERRORS",
-  "PRO20.C" = "IDENTIFICATION OF POPULATIONS",
-  "PRO20.D" = "DATA CONFIDENTIALITY AND PRIVACY",
-  "PRO20.E" = "RESOURCE CONSTRAINTS",
-  "PRO20.F" = "POLITICAL ISSUES",
-  "PRO20.G" = "SAFETY CONCERNS",
-  "PRO20.H" = "TIMELINESS AND DATA QUALITY",
-  "PRO20.I" = "LIMITED TECHNICAL CAPACITY",
-  "PRO20.J" = "LACK OF ACCESSIBLE GUIDANCE",
+  "PRO20.A" = "Non-response bias",
+  "PRO20.B" = "Sampling errors",
+  "PRO20.C" = "Identification of populations",
+  "PRO20.D" = "Data confidentiality and privacy",
+  "PRO20.E" = "Resource constraints",
+  "PRO20.F" = "Political issues",
+  "PRO20.G" = "Safety concerns",
+  "PRO20.H" = "Timeliness and data quality",
+  "PRO20.I" = "Limited technical capacity",
+  "PRO20.J" = "Lack of accessible guidance",
   "PRO20.X" = "Other"
 )
 
@@ -1440,12 +1563,54 @@ challenges_data <- group_roster %>%
   mutate(Challenge = recode(Challenge, !!!challenge_labels)) %>%
   group_by(Challenge, ryear) %>%
   summarise(Count = n(), .groups = "drop") %>%
-  pivot_wider(names_from = ryear, values_from = Count, values_fill = 0)
+  pivot_wider(names_from = ryear, values_from = Count, values_fill = list(Count = 0))
 
-figure9 <- create_flextable(challenges_data, "Figure 9: Challenges Reported")
+challenges_data <- challenges_data %>%
+  rename(Response = Challenge) %>%
+  mutate(across(c(`2023`, `2024`), as.character))  # Convert to character for compatibility
+
+# ======================================================
+# Combining Both Tables into One Stacked Table
+# ======================================================
+
+combined_data <- bind_rows(
+  tibble(Response = "Count of Respondents Facing Challenges", `2023` = "", `2024` = ""),
+  pro19_summary,
+  tibble(Response = "", `2023` = "", `2024` = ""),  # Spacer row
+  tibble(Response = "Types of Challenges Identified", `2023` = "", `2024` = ""),
+  challenges_data
+)
+
+# Identify row indices dynamically
+highlight_rows <- which(combined_data$Response %in% 
+                          c("Count of Respondents Facing Challenges", 
+                            "Types of Challenges Identified"))
+
+# Create the flextable
+figure9 <- flextable(combined_data) %>%
+  theme_vanilla() %>%
+  fontsize(size = 10, part = "all") %>%
+  bold(part = "header") %>%
+  bg(part = "header", bg = header_color) %>%  # Light Blue Header
+  bg(i = highlight_rows, bg = gray_highlight, part = "body") %>%  # Highlight Correct Rows
+  border_outer(part = "all", border = border_style) %>%  # Outer Border for Entire Table
+  autofit() %>%
+  add_footer_row(
+    values = paste0(
+      "Data based on respondents’ reports in 2023 and 2024. ",
+      "Categories include those who identified as facing challenges, not facing challenges, or did not provide sufficient information. ",
+      "The second section categorizes types of challenges identified. ",
+      "Key rows are highlighted in gray for improved readability."
+    ),
+    colwidths = ncol(combined_data)
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%
+  set_caption("Figure 9: Overview of Respondents Facing Challenges and Types of Challenges Identified")
+
+print(figure9)
                         
 # ======================================================
-# Generate Institutional Implementation breakdown table
+# Generate Institutional Implementation breakdown table - by source
 # ======================================================
                         
 institutional_implementation_table <- group_roster %>%
@@ -1491,6 +1656,69 @@ institutional_flextable <- flextable(institutional_implementation_table) %>%
   autofit() %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Institutional Implementation Breakdown")
+
+# ======================================================
+# Generate Institutional Implementation breakdown table - by implementation level
+# ======================================================
+
+institutional_implementation_table_level <- group_roster %>%
+  filter(g_conled == 2 | g_conled == 3) %>%
+  mutate(
+    Use_of_Recommendations = case_when(
+      PRO09 == 1 ~ "Using Recommendations",
+      PRO09 == 2 ~ "Not Using Recommendations",
+      PRO09 == 8 ~ "Undetermined",
+      TRUE ~ "Undetermined"
+    ),
+    Implementation_Level = case_when(
+      PRO03B == 1 ~ "Global",
+      PRO03B == 2 ~ "Regional",
+      PRO03B == 3 ~ "Country",
+      PRO03B == 8 ~ "Undetermined",
+      TRUE ~ "Undetermined"
+    )
+  ) %>%
+  group_by(Use_of_Recommendations, Implementation_Level, ryear) %>%
+  summarise(Total_Examples = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ryear, values_from = Total_Examples, values_fill = 0) %>%
+  select(c("Use_of_Recommendations", "Implementation_Level", "2021", "2022", "2023", "2024")) %>%
+  rowwise() %>%
+  mutate(Total = sum(c_across(`2021`:`2024`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(
+    factor(Use_of_Recommendations, levels = c("Using Recommendations", "Not Using Recommendations", "Undetermined")),
+    factor(Implementation_Level, levels = c("Global", "Regional", "Country", "Undetermined"))
+  ) %>%
+  select(`Use of Recommendations` = Use_of_Recommendations, `Implementation Level` = Implementation_Level, `2021`, `2022`, `2023`, `2024`, Total)  # Ensure correct column order
+
+# Calculate the totals for "Global", "Regional", and "Country"
+summary_rows <- institutional_implementation_table_level %>%
+  filter(`Implementation Level` %in% c("Global", "Regional", "Country")) %>%
+  group_by(`Implementation Level`) %>%
+  summarise(across(`2021`:`2024`, sum, na.rm = TRUE), Total = sum(Total, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(`Use of Recommendations` = "Total") %>%  # Add the 'Total' for Use_of_Recommendations
+  arrange(
+    factor(`Implementation Level`, levels = c("Global", "Regional", "Country"))
+  ) %>% 
+  select(c("Use of Recommendations", "Implementation Level", "2021", "2022", "2023", "2024", "Total"))
+
+# Add the summary rows at the top of the original table
+institutional_implementation_table_level <- bind_rows(summary_rows, institutional_implementation_table_level)
+
+# Beautify and create FlexTable for Word
+institutional_level_flextable <- flextable(institutional_implementation_table_level) %>%
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%   # Highlight the 2024 column
+  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
+  merge_v(j = ~ `Use of Recommendations`) %>%  # Merge vertical cells for Use_of_Recommendations
+  merge_v(j = ~ `Implementation Level`) %>%  # Merge vertical cells for Source
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  autofit() %>%
+  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
+  set_caption(caption = "Institutional Implementation Breakdown by Implementation Level")
                         
 # ======================================================
 # Add Future Projects 
@@ -1537,40 +1765,63 @@ source_summary_flextable <- flextable(source_summary) %>%
   add_footer_lines(values = "Source: GAIN 2024 Data") %>%
   set_caption(caption = "Future Projects Breakdown by Source for 2024")
                         
-# ======================================================
+# ============================================================================================================
 # Unique Country Count for Use of Recommendations (PRO09 == 1) by Leadership Type
-# ======================================================
+# ============================================================================================================
+
+# EGRISS Color Scheme
+primary_color <- "#4cc3c9"   # Light Blue Header
+secondary_color <- "#3b71b3" # Dark Blue for Total Row
+accent_color <- "#072d62"
+highlight_red <- "#D73027"
+background_color <- "#f0f8ff"
 
 # Function to calculate unique country counts by `g_conled`
 calculate_unique_country_count <- function(group_roster, leadership_type) {
   df <- group_roster %>%
-    filter(PRO09 == 1, g_conled == leadership_type) %>%  # Filter for Use of Recommendations and Leadership Type
+    filter(PRO09 == 1, g_conled == leadership_type) %>%
     group_by(region, ryear) %>%
     summarise(unique_countries = n_distinct(mcountry), .groups = "drop") %>%
     pivot_wider(names_from = ryear, values_from = unique_countries, values_fill = 0)
   
-  # Ensure all year columns exist, even if missing from data
+  # Ensure all year columns exist
   for (year in c("2021", "2022", "2023", "2024")) {
     if (!(year %in% colnames(df))) {
-      df[[year]] <- 0  # Add missing year column with default 0
+      df[[year]] <- 0
     }
   }
   
   df <- df %>%
     mutate(Total = rowSums(across(c("2021", "2022", "2023", "2024")), na.rm = TRUE)) %>%
-    mutate(Leadership = if_else(leadership_type == 1, "Nationally Led", "Institutionally Led"))
+    mutate(`Leadership` = if_else(leadership_type == 1, "Nationally Led Examples", "Institutionally Led Examples")) %>%
+    relocate(`Leadership`, .before = everything())
   
   return(df)
 }
 
-# Calculate unique country counts for nationally and institutionally led examples
+# Function to list countries by region
+list_countries_by_region <- function(group_roster) {
+  df <- group_roster %>%
+    filter(PRO09 == 1) %>%
+    group_by(region, ryear) %>%
+    summarise(countries = paste(unique(mcountry), collapse = ", ")) %>%
+    arrange(region, desc(ryear)) %>%
+    pivot_wider(names_from = region, values_from = countries, values_fill = "") %>%
+    mutate(`Year` = as.character(ryear)) %>%
+    relocate(`Year`, .before = everything())
+  
+  return(df)
+}
+
+# Calculate unique country counts for Nationally and Institutionally Led examples
 nationally_led_count <- calculate_unique_country_count(group_roster, 1)
 institutionally_led_count <- calculate_unique_country_count(group_roster, 2)
 
 # Combine both tables
-combined_unique_country_count <- bind_rows(nationally_led_count, institutionally_led_count)
+combined_unique_country_count <- bind_rows(nationally_led_count, institutionally_led_count) %>%
+  rename(Region = region)
 
-# Add a summary row for total unique countries across all regions
+# Add Total Row
 total_unique_summary <- group_roster %>%
   filter(PRO09 == 1) %>%
   group_by(ryear) %>%
@@ -1586,7 +1837,8 @@ for (year in c("2021", "2022", "2023", "2024")) {
 
 total_unique_summary <- total_unique_summary %>%
   mutate(Total = rowSums(across(c("2021", "2022", "2023", "2024")), na.rm = TRUE)) %>%
-  mutate(region = "Total Unique Countries", Leadership = "Total")
+  mutate(`Leadership` = "Total") %>%
+  relocate(`Leadership`, .before = everything())
 
 # Final table with combined counts and summary
 final_unique_country_table <- bind_rows(combined_unique_country_count, total_unique_summary)
@@ -1595,20 +1847,70 @@ final_unique_country_table <- bind_rows(combined_unique_country_count, total_uni
 unique_country_flextable <- flextable(final_unique_country_table) %>%
   theme_booktabs() %>%
   bold(part = "header") %>%
-  bg(bg = "#f4cccc", j = ~ `2024`) %>%   # Highlight the 2024 column
-  bg(bg = "#c9daf8", j = ~ Total) %>%   # Highlight the Total column
-  merge_v(j = ~ Leadership) %>%  # Merge Leadership column for repeated values
+  
+  # Highlight Total Row in Dark Blue
+  bg(i = nrow(final_unique_country_table), bg = secondary_color) %>%
+  color(i = nrow(final_unique_country_table), color = "white") %>%
+  
+  # Highlight Header Row in Light Blue
+  bg(part = "header", bg = primary_color) %>%
+  color(part = "header", color = "black") %>%
+  
+  # Highlight Key Year Columns
+  bg(bg = "#f4cccc", j = ~ `2024`) %>%
+  bg(bg = "#c9daf8", j = ~ Total) %>%
+  
+  merge_v(j = ~ `Leadership`) %>%
   border_outer(border = fp_border(color = "black", width = 2)) %>%
   border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
-  autofit() %>%
-  add_footer_lines(values = "Source: GAIN 2024 Data") %>%
-  set_caption(caption = "Unique Country Count by Leadership Type, Region, and Year for Use of Recommendations (PRO09 == 1)")                  
-library(dplyr)
-library(tidyr)
-library(flextable)
-library(officer)
-library(readr)
+  
+  # AutoFit for Optimal Sizing
+  set_table_properties(width = 0.5, layout = "autofit") %>%
+  
+  # Add Metadata Summary in Footnote
+  add_footer_row(
+    values = paste0(
+      "Footnote: This data supports Figure 4 in the 2024 Annual Report. ",
+      "It tracks national and institutional examples of EGRISS recommendation use. ",
+      "Definitions: ",
+      "• Nationally Led: Country-led data collection initiatives. ",
+      "• Institutionally Led: Data collection led by international organizations without explicit country leadership. ",
+      "• CSO-Led or Other: Data collection by civil society organizations or other entities. ",
+      "• PRO09: Identifies if EGRISS recommendations were used in data collection efforts. "
+    ),
+    colwidths = ncol(final_unique_country_table)
+  ) %>%
+  fontsize(size = 7, part = "footer") %>%
+  
+  # Updated Caption
+  set_caption("Unique Country Count by Examples led by distinct countries and Year for Use of Recommendations (PRO09 == 1)")
 
+# Display Table
+unique_country_flextable
+
+#============================================================================================================
+# Unique Country List
+#============================================================================================================
+
+# List of Countries by Region
+country_list_flextable <- flextable(list_countries_by_region(group_roster)) %>%
+  delete_columns(j = "ryear") %>%
+  set_table_properties(width = 1.0, layout = "autofit") %>%  # Adjusted width to 1.0 to expand the table
+  theme_booktabs() %>%
+  bold(part = "header") %>%
+  bg(part = "header", bg = primary_color) %>%
+  color(part = "header", color = "black") %>%
+  border_outer(border = fp_border(color = "black", width = 2)) %>%
+  border_inner(border = fp_border(color = "gray", width = 0.5)) %>%
+  
+  # Add footer row with the footnote text (after deleting the column)
+  add_footer_row(values = "Footnote: This table presents the list of countries for each region based on metadata information.",
+                 colwidths = ncol(list_countries_by_region(group_roster)) - 1) %>%  # Adjust colwidths due to the column deletion
+  
+  set_caption("List of Countries by Region")
+
+# Display Second Table
+country_list_flextable
 
 # ============================================================================================================
 # Figure XX (text in AR): Components of EGRISS Recommendations Most Frequently Used
@@ -1805,6 +2107,7 @@ partnership_flextable <- flextable(partnership_data) %>%
 
 # Display Table in RStudio Viewer (for verification)
 partnership_flextable
+                        
 # ======================================================
 # Breakdown of GRF Pledges
 # ======================================================
@@ -1927,28 +2230,37 @@ word_doc <- word_doc %>%
   body_add_break() %>%
   body_add_flextable(figure7) %>%
   body_add_break() %>%
+  body_add_flextable(final_flextable) %>%
+  
+  # Switch to landscape mode before Figure 8
+  body_end_section_portrait() %>%
   body_add_par("Figure 8: Breakdown by Year, Use of Recommendations, and Source", style = "heading 2") %>%
   body_add_flextable(figure8_flextable) %>%
   body_add_break() %>%
+  
+  # Switch back to portrait mode after Figure 8
+  body_end_section_landscape() %>%
   body_add_flextable(text1) %>%
   body_add_break() %>%
   
-  # **Updated Section with Merged Table**
+  # Updated Section with Merged Table (Portrait Mode)
   body_add_par("Breakdown by Category and Region for PRO11/PRO12 Data", style = "heading 2") %>%
   body_add_flextable(merged_flextable) %>%
   body_add_break() %>%
-  
   body_add_par("Unique Country Count by Region and Year", style = "heading 2") %>%
   body_add_flextable(unique_country_flextable) %>%
-  body_add_break() %>%
   
-  # **Insert the Map Image in Portrait Mode with A4-friendly size**
+  # Switch to landscape mode for the country list (Landscape Mode)
   body_end_section_portrait() %>%
+  body_add_flextable(country_list_flextable) %>%
+  
+  # Switch back to portrait mode for the Map Image (Portrait Mode)
+  body_end_section_landscape() %>%
   body_add_par("Map of Examples (2024)", style = "heading 2") %>%
   body_add_img(src = "final_combined_maps.png", width = 5.5, height = 7.5) %>%
   body_add_break() %>%
   
-  # **Resume Portrait Content**
+  # Resume in portrait mode with tables (Portrait Mode)
   body_add_flextable(figure9) %>%
   body_add_break() %>%
   body_add_par("Institutional Implementation Breakdown", style = "heading 2") %>%
@@ -1961,12 +2273,11 @@ word_doc <- word_doc %>%
   body_add_flextable(partnership_flextable) %>%
   body_add_break() %>%
   
-  # **GFR Table in Landscape at the End**
-  body_end_section_landscape() %>%
   body_add_par("Summary Table: GFR Data on Pledges", style = "heading 2") %>%
   body_add_flextable(grf_flextable) %>%
-  body_end_section_continuous() %>%  # Corrected function for returning to Portrait Orientation
-  body_add_break()
+  
+  # Finish the document with continuous section (portrait by default)
+  body_end_section_continuous()
 
 # ======================================================
 # Save the Word Document
